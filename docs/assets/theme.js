@@ -15,8 +15,7 @@ function applyTheme(theme) {
     localStorage.setItem(KEY, theme);
   } catch (e) {}
   document.querySelectorAll("[data-theme-toggle]").forEach((btn) => {
-    btn.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
-    btn.textContent = theme === "dark" ? "light" : "dark";
+    btn.textContent = theme === "dark" ? "Light mode" : "Dark mode";
   });
 }
 

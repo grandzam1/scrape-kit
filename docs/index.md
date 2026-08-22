@@ -6,6 +6,7 @@ title: Scrapes
 <section class="hero">
   <h1>Scraped pages</h1>
   <p class="lede">scrapes, rendered like a cobalt changelog — no nested cards.</p>
+  <button class="theme-toggle" type="button" data-theme-toggle>Dark mode</button>
 </section>
 
 <ul class="list">
