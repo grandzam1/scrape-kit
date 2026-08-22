@@ -186,10 +186,35 @@ function startScrape(url) {
 document.addEventListener("DOMContentLoaded", () => {
   applyVisual(0);
   const form = $("scrape-form");
-  if (!form) return;
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const url = $("scrape-url").value.trim();
-    if (url) startScrape(url);
+  if (form) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const url = $("scrape-url").value.trim();
+      if (url) startScrape(url);
+    });
+  }
+
+  const pages = $("pages");
+  const viewBtns = document.querySelectorAll(".view-btn");
+  if (!pages || !viewBtns.length) return;
+
+  const applyView = (view) => {
+    const next = view === "grid" ? "grid" : "list";
+    pages.dataset.view = next;
+    viewBtns.forEach((btn) => {
+      btn.setAttribute("aria-pressed", String(btn.dataset.view === next));
+    });
+    try {
+      localStorage.setItem("scrape-kit-view", next);
+    } catch (e) {}
+  };
+
+  let saved = "list";
+  try {
+    saved = localStorage.getItem("scrape-kit-view") || "list";
+  } catch (e) {}
+  applyView(saved);
+  viewBtns.forEach((btn) => {
+    btn.addEventListener("click", () => applyView(btn.dataset.view));
   });
 });

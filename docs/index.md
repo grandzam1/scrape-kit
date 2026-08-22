@@ -45,13 +45,20 @@ title: Scrapes
   <a id="scrape-live" href="#"></a>
 </p>
 
-<ul class="list">
+<div class="pages-head">
+  <p class="pages-label">Your pages</p>
+  <div class="view-switch" role="group" aria-label="How to show pages">
+    <button type="button" class="view-btn" data-view="list" aria-pressed="true">List</button>
+    <button type="button" class="view-btn" data-view="grid" aria-pressed="false">Grid</button>
+  </div>
+</div>
+<ul class="pages" id="pages" data-view="list">
 {% for p in site.pages %}
   {% if p.path contains "scrapes/" and p.path contains "page.md" %}
   <li>
     <a href="{{ p.url | relative_url }}">
       <strong>{{ p.title | default: p.path }}</strong>
-      <span>{{ p.source | default: p.path }}</span>
+      <span>{{ p.source | default: "" }}</span>
     </a>
   </li>
   {% endif %}
