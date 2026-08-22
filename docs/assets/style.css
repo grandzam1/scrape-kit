@@ -167,6 +167,58 @@ html, body {
 
 .theme-toggle:hover { box-shadow: inset 0 0 0 1px var(--foreground); }
 
+.scrape-form {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0 0 1.5rem;
+}
+.scrape-form label { font-size: 13px; color: var(--muted-foreground); }
+.scrape-form input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--chip);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 14px;
+}
+.scrape-form button { justify-self: start; }
+
+.scrape-progress { margin: 0 0 1.75rem; }
+.scrape-meter {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--border);
+  overflow: hidden;
+  margin: 0 0 0.75rem;
+}
+#scrape-bar {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--foreground);
+}
+.scrape-status { margin: 0 0 0.75rem; color: var(--muted-foreground); }
+.scrape-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.scrape-steps li {
+  padding: 0.35rem 0;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
+}
+.scrape-steps li[data-state="now"] { color: var(--foreground); font-weight: 500; }
+.scrape-steps li[data-state="done"] { color: var(--foreground); }
+.scrape-steps li[data-state="done"]::before { content: "done · "; color: var(--muted-foreground); }
+.scrape-steps li[data-state="now"]::before { content: "now · "; }
+.scrape-error { color: #b42318; }
+.scrape-done { margin: 0 0 1.75rem; }
+.scrape-done a { color: var(--portal-primary); word-break: break-all; }
+
 .list { list-style: none; padding: 0; margin: 0; }
 .list li { margin: 0 0 0.15rem; }
 .list a {

@@ -50,6 +50,8 @@ That commit triggers Pages.
 
 Site: https://grandzam1.github.io/scrape-kit/
 
+Paste a URL on the home page. The browser opens a websocket to the Deno runner (`/ws`), shows each step, then links the live Pages URL.
+
 Shell, tokens, and PWA come from [portal-mobile-kit](https://github.com/grandzam1/portal-mobile-kit):
 
 - `docs/assets/portal-shell.css` — safe areas, tab clearance, focused header

@@ -19,3 +19,4 @@ defaults:
     values:
       layout: scrape
       focused: true
+scrape_ws: wss://zamplandoc-scrape.grandzam1.deno.net/ws

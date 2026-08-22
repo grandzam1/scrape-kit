@@ -173,15 +173,155 @@ async function githubPutFile(path: string, content: string, message: string) {
   return result;
 }
 
+const PAGES_BASE = Deno.env.get("PAGES_BASE") ?? "https://grandzam1.github.io/scrape-kit";
+const ALLOWED_ORIGINS = new Set([
+  "https://grandzam1.github.io",
+  "http://127.0.0.1:4000",
+  "http://localhost:4000",
+]);
+
+const STEPS = [
+  { id: "queued", label: "Got your URL" },
+  { id: "scrape", label: "Reading the page" },
+  { id: "write", label: "Saving markdown" },
+  { id: "commit", label: "Pushing to GitHub" },
+  { id: "pages", label: "GitHub Pages building" },
+  { id: "done", label: "Live page ready" },
+];
+
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("origin") ?? "";
+  const allow = ALLOWED_ORIGINS.has(origin) ? origin : "";
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Headers": "content-type, x-scrape-secret",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  };
+}
+
+function originOk(req: Request) {
+  const origin = req.headers.get("origin");
+  if (origin && ALLOWED_ORIGINS.has(origin)) return true;
+  const secret = Deno.env.get("SCRAPE_SECRET");
+  const q = new URL(req.url).searchParams.get("secret");
+  const header = req.headers.get("x-scrape-secret");
+  return Boolean(secret && (q === secret || header === secret));
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function waitForLivePage(pageUrl: string) {
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(pageUrl, { redirect: "follow" });
+      if (res.ok) return true;
+    } catch {
+      /* Pages not up yet */
+    }
+    await sleep(4000);
+  }
+  return false;
+}
+
+type Progress = (step: string, extra?: Record<string, unknown>) => void;
+
+async function runScrape(
+  sourceUrl: string,
+  slugInput: string | undefined,
+  waitFor: number,
+  onlyMainContent: boolean,
+  progress: Progress,
+  waitPages = false,
+) {
+  const slug = String(slugInput ?? slugFromUrl(sourceUrl)).replace(/[^a-zA-Z0-9_-]/g, "-");
+  const filePath = `docs/scrapes/${slug}/page.md`;
+  const pageUrl = `${PAGES_BASE}/scrapes/${slug}/page.html`;
+
+  progress("queued", { slug, pageUrl });
+  progress("scrape");
+  const scraped = await scrapeFirecrawl(sourceUrl, waitFor, onlyMainContent);
+
+  progress("write");
+  const markdown = buildMarkdown(sourceUrl, scraped.title, scraped.markdown);
+
+  progress("commit");
+  await githubPutFile(filePath, markdown, `scrape: update ${slug}`);
+
+  progress("pages", { pageUrl });
+  if (waitPages) await waitForLivePage(pageUrl);
+
+  progress("done", { slug, pageUrl, path: filePath, sourceUrl });
+  return { slug, pageUrl, path: filePath, sourceUrl };
+}
+
+function eventPayload(step: string, extra: Record<string, unknown> = {}) {
+  const index = STEPS.findIndex((s) => s.id === step);
+  const total = STEPS.length;
+  const label = STEPS[index]?.label ?? step;
+  return {
+    step,
+    index,
+    total,
+    pct: index < 0 ? 0 : Math.round(((index + 1) / total) * 100),
+    label,
+    ...extra,
+  };
+}
+
 Deno.serve(async (req) => {
   const url = new URL(req.url);
 
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders(req) });
+  }
+
   if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
-    return json({ ok: true, service: "zamplandoc-scrape" });
+    return json({ ok: true, service: "zamplandoc-scrape", ws: "/ws" });
+  }
+
+  if (url.pathname === "/ws" && req.headers.get("upgrade")?.toLowerCase() === "websocket") {
+    if (!originOk(req)) {
+      return json({ ok: false, error: "unauthorized" }, 401);
+    }
+    const { socket, response } = Deno.upgradeWebSocket(req);
+    socket.onmessage = async (ev) => {
+      try {
+        const body = JSON.parse(String(ev.data));
+        const sourceUrl = String(body.url ?? "").trim();
+        if (!sourceUrl) {
+          socket.send(JSON.stringify({ step: "error", error: "url is required" }));
+          socket.close();
+          return;
+        }
+        await runScrape(
+          sourceUrl,
+          body.slug,
+          Number(body.waitFor ?? 3000),
+          body.onlyMainContent !== false,
+          (step, extra = {}) => {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify(eventPayload(step, extra)));
+            }
+          },
+          true,
+        );
+        socket.close();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ step: "error", error: message }));
+          socket.close();
+        }
+      }
+    };
+    return response;
   }
 
   if (req.method !== "POST" || url.pathname !== "/scrape") {
-    return json({ ok: false, error: "POST /scrape with JSON { url, slug? }" }, 404);
+    return json({ ok: false, error: "POST /scrape or WebSocket /ws" }, 404);
   }
 
   const secret = Deno.env.get("SCRAPE_SECRET");
@@ -194,22 +334,15 @@ Deno.serve(async (req) => {
     const sourceUrl = String(body.url ?? "").trim();
     if (!sourceUrl) return json({ ok: false, error: "url is required" }, 400);
 
-    const waitFor = Number(body.waitFor ?? 3000);
-    const onlyMainContent = body.onlyMainContent !== false;
-    const slug = String(body.slug ?? slugFromUrl(sourceUrl)).replace(/[^a-zA-Z0-9_-]/g, "-");
-    const path = `docs/scrapes/${slug}/page.md`;
-
-    const scraped = await scrapeFirecrawl(sourceUrl, waitFor, onlyMainContent);
-    const markdown = buildMarkdown(sourceUrl, scraped.title, scraped.markdown);
-    const gh = await githubPutFile(path, markdown, `scrape: update ${slug}`);
-
-    return json({
-      ok: true,
-      slug,
-      path,
+    const result = await runScrape(
       sourceUrl,
-      html_url: gh?.content?.html_url ?? `https://github.com/${REPO}/blob/${BRANCH}/${path}`,
-    });
+      body.slug,
+      Number(body.waitFor ?? 3000),
+      body.onlyMainContent !== false,
+      () => {},
+    );
+
+    return json({ ok: true, ...result }, 200);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return json({ ok: false, error: message }, 500);
