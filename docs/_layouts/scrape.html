@@ -9,9 +9,12 @@ layout: focused
       <div class="changelog-date">{{ page.scrapedAt | date: "%b %-d, %Y" }}</div>
       {% endif %}
     </div>
-    {% if page.source %}
-    <a class="changelog-source" href="{{ page.source }}">source</a>
-    {% endif %}
+    <div class="changelog-actions">
+      {% if page.source %}
+      <a class="changelog-source" href="{{ page.source }}">source</a>
+      {% endif %}
+      <button class="copy-page" type="button" data-copy-page>Copy page</button>
+    </div>
     {% if page.layoutSource == "raw" %}
     <p class="scrape-flag">Groq did not layout this page. This is the Firecrawl scrape.</p>
     {% endif %}
