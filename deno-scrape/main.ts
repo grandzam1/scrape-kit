@@ -237,7 +237,7 @@ async function groqClassify(markdown: string, fragment: string | null): Promise<
   const key = Deno.env.get("GROQ_API_KEY");
   if (!key) throw new Error("Missing GROQ_API_KEY");
 
-  const model = Deno.env.get("GROQ_MODEL") ?? "llama-3.3-70b-versatile";
+  const model = Deno.env.get("GROQ_MODEL") ?? "openai/gpt-oss-20b";
   const clipped = markdown.length > 100_000
     ? markdown.slice(0, 100_000) + "\n\n[truncated]"
     : markdown;
