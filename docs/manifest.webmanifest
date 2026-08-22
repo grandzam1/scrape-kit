@@ -4,8 +4,8 @@
   "start_url": "/scrape-kit/",
   "scope": "/scrape-kit/",
   "display": "standalone",
-  "background_color": "#f4f4f4",
-  "theme_color": "#f4f4f4",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
   "icons": [
     {
       "src": "/scrape-kit/icons/icon-192.png",

@@ -1,14 +1,19 @@
 {
   "colors": {
-    "primary": "#1f3249",
-    "primaryDark": "#1f3249",
-    "primaryLight": "#e0eeff",
-    "pageBg": "#f4f4f4",
-    "cardBg": "#f4f4f4",
-    "foreground": "#000000",
-    "muted": "#5c5c5c",
-    "border": "rgba(0, 0, 0, 0.08)",
-    "primaryForeground": "#e0eeff"
+    "light": {
+      "primary": "#1f3249",
+      "pageBg": "#f4f4f4",
+      "foreground": "#000000",
+      "muted": "#5c5c5c",
+      "border": "rgba(0, 0, 0, 0.08)"
+    },
+    "dark": {
+      "primary": "#c5d9f0",
+      "pageBg": "#0f0f0f",
+      "foreground": "#f4f4f4",
+      "muted": "#9a9a9a",
+      "border": "rgba(255, 255, 255, 0.12)"
+    }
   },
   "typography": {
     "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",

@@ -1,4 +1,5 @@
-:root {
+:root,
+html[data-theme="light"] {
   --portal-primary: #1f3249;
   --portal-primary-dark: #1f3249;
   --portal-primary-foreground: #e0eeff;
@@ -8,8 +9,40 @@
   --border: rgba(0, 0, 0, 0.08);
   --page-bg: #f4f4f4;
   --card: #f4f4f4;
+  --chip: #ffffff;
   --radius: 11px;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  --portal-primary: #c5d9f0;
+  --portal-primary-dark: #e0eeff;
+  --portal-primary-foreground: #0f0f0f;
+  --background: #0f0f0f;
+  --foreground: #f4f4f4;
+  --muted-foreground: #9a9a9a;
+  --border: rgba(255, 255, 255, 0.12);
+  --page-bg: #0f0f0f;
+  --card: #0f0f0f;
+  --chip: #1c1c1c;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --portal-primary: #c5d9f0;
+    --portal-primary-dark: #e0eeff;
+    --portal-primary-foreground: #0f0f0f;
+    --background: #0f0f0f;
+    --foreground: #f4f4f4;
+    --muted-foreground: #9a9a9a;
+    --border: rgba(255, 255, 255, 0.12);
+    --page-bg: #0f0f0f;
+    --card: #0f0f0f;
+    --chip: #1c1c1c;
+    color-scheme: dark;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -27,10 +60,6 @@ html, body {
 #portal-shell.portal-theme {
   min-height: 100dvh;
   background: var(--page-bg);
-  --background: var(--page-bg);
-  --border: rgba(0, 0, 0, 0.08);
-  --foreground: #000;
-  --muted-foreground: #5c5c5c;
 }
 
 .portal-shell-content {
@@ -199,7 +228,7 @@ html, body {
 }
 .changelog-body pre {
   overflow: auto;
-  background: #fff;
+  background: var(--chip);
   box-shadow: inset 0 0 0 1px var(--border);
   padding: 0.9rem;
   border-radius: 8px;
@@ -229,12 +258,35 @@ html, body {
   display: inline-block;
   margin: 1.5rem 0 0.65rem;
   padding: 0.2rem 0.55rem;
-  background: #fff;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  background: var(--chip);
+  box-shadow: inset 0 0 0 1px var(--border);
   border-radius: 11px;
   font-size: 12px;
   font-weight: 500;
 }
+
+.theme-toggle {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+}
+
+.portal-fixed-top-bar .theme-toggle {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  color: var(--foreground);
+  font-size: 0.7rem;
+}
+
+.theme-toggle:hover { color: var(--foreground); }
 
 .foot {
   margin-top: 2rem;

@@ -1,27 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="viewport-fit=cover, width=device-width, height=device-height, initial-scale=1, maximum-scale=1">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Scrapes">
-  <meta name="theme-color" content="#f4f4f4" id="meta-theme-color">
-  <title>{% if page.title %}{{ page.title }} · {% endif %}{{ site.title }}</title>
-  <link rel="manifest" href="{{ '/manifest.webmanifest' | relative_url }}">
-  <link rel="apple-touch-icon" href="{{ '/icons/icon-192.png' | relative_url }}">
-  <link rel="icon" type="image/png" href="{{ '/icons/icon-192.png' | relative_url }}">
-  <link rel="stylesheet" href="https://fonts.bunny.net/css?family=ibm-plex-mono:400,500">
-  <link rel="stylesheet" href="{{ '/assets/portal-shell.css' | relative_url }}">
-  <link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
+  {% include head.html %}
 </head>
 <body>
   <div id="portal-shell" class="portal-theme" data-mobile>
     <header class="portal-fixed-top-bar">
       <a class="back" href="{{ '/' | relative_url }}" aria-label="Back">←</a>
       <div class="title">{{ page.title | default: "Scrape" }}</div>
-      <span></span>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Toggle theme" aria-pressed="false">dark</button>
     </header>
     <main class="portal-shell-content portal-shell-content--focused">
       {{ content }}
