@@ -9,7 +9,7 @@ This repo is **only** the scraper. The original `zamplandoc` workspace is unchan
 | Piece | Role |
 |---|---|
 | `src/` + `jobs/` | Local CLI (`node src/cli.js --job jobs/….yaml`) |
-| `deno-scrape/` | Cloud HTTP: scrape → commit `docs/scrapes/<slug>/page.md` |
+| `deno-scrape/` | Cloud HTTP: Firecrawl → Groq JSON → markdown → `docs/scrapes/<slug>/page.md` |
 | `docs/` | GitHub Pages site for those markdown files |
 
 ## Setup (local CLI)
@@ -32,7 +32,8 @@ npm run scrape -- --job jobs/example-generic.yaml
 
 Deploy `deno-scrape/main.ts` to Deno Deploy. Env vars:
 
-- `FIRECRAWL_API_KEY` or Composio scrape (CLI path uses Composio)
+- `FIRECRAWL_API_KEY`
+- `GROQ_API_KEY` (optional; without it the runner publishes Firecrawl markdown as-is)
 - `GITHUB_TOKEN` with `contents:write` on this repo
 - `GITHUB_REPO=grandzam1/scrape-kit`
 - `SCRAPE_SECRET`

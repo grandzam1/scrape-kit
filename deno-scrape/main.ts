@@ -1,6 +1,5 @@
 /**
- * HTTP scrape runner: Firecrawl → markdown → GitHub docs/scrapes/<slug>/page.md
- * No Groq. No Pipedream.
+ * HTTP scrape runner: Firecrawl → Groq JSON → Deno markdown → GitHub docs/scrapes/<slug>/page.md
  */
 
 const REPO = Deno.env.get("GITHUB_REPO") ?? "grandzam1/scrape-kit";
@@ -89,15 +88,237 @@ function fixMojibake(input: string): string {
   return text;
 }
 
-function buildMarkdown(sourceUrl: string, title: string, body: string): string {
+const PAGE_TYPES = new Set([
+  "article",
+  "guide",
+  "product",
+  "changelog",
+  "thread",
+  "docs",
+  "other",
+]);
+
+const CALLOUT_KINDS = new Set(["note", "warning", "tip"]);
+
+type GroqPage = {
+  pageType: string;
+  title: string;
+  summary: string | null;
+  sections: { heading: string; body: string }[];
+  callouts: { kind: string; text: string }[];
+  mermaid: string | null;
+  warnings: string[];
+};
+
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function parseFrontHash(md: string): string | null {
+  const m = md.match(/^contentHash:\s*"?([a-f0-9]{64})"?/m);
+  return m?.[1] ?? null;
+}
+
+function extractJsonObject(text: string): unknown {
+  const trimmed = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const start = trimmed.indexOf("{");
+    const end = trimmed.lastIndexOf("}");
+    if (start >= 0 && end > start) return JSON.parse(trimmed.slice(start, end + 1));
+    throw new Error("Groq response was not valid JSON");
+  }
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function validateGroqPage(raw: unknown): GroqPage {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("Groq JSON must be an object");
+  }
+  const o = raw as Record<string, unknown>;
+  const title = asString(o.title).replace(/\s+/g, " ").trim();
+  if (!title) throw new Error("Groq JSON missing title");
+
+  const pageType = PAGE_TYPES.has(asString(o.pageType)) ? asString(o.pageType) : "other";
+
+  const sectionsIn = Array.isArray(o.sections) ? o.sections : [];
+  const sections = sectionsIn
+    .filter((s) => s && typeof s === "object")
+    .map((s) => {
+      const row = s as Record<string, unknown>;
+      return {
+        heading: asString(row.heading).trim(),
+        body: asString(row.body).trim(),
+      };
+    })
+    .filter((s) => s.heading || s.body);
+  if (!sections.length) throw new Error("Groq JSON missing sections");
+
+  const calloutsIn = Array.isArray(o.callouts) ? o.callouts : [];
+  const callouts = calloutsIn
+    .filter((c) => c && typeof c === "object")
+    .map((c) => {
+      const row = c as Record<string, unknown>;
+      const kind = asString(row.kind).toLowerCase();
+      return {
+        kind: CALLOUT_KINDS.has(kind) ? kind : "note",
+        text: asString(row.text).trim(),
+      };
+    })
+    .filter((c) => c.text);
+
+  let mermaid = o.mermaid == null ? null : asString(o.mermaid).trim();
+  if (mermaid && (mermaid.includes("```") || mermaid.length > 8000)) mermaid = null;
+
+  const warnings = Array.isArray(o.warnings)
+    ? o.warnings.map((w) => asString(w).trim()).filter(Boolean)
+    : [];
+
+  const summaryRaw = o.summary == null ? "" : asString(o.summary).trim();
+  return {
+    pageType,
+    title,
+    summary: summaryRaw || null,
+    sections,
+    callouts,
+    mermaid,
+    warnings,
+  };
+}
+
+function pageToMarkdown(page: GroqPage): string {
+  const parts: string[] = [];
+  if (page.summary) parts.push(page.summary);
+  for (const section of page.sections) {
+    if (section.heading) parts.push(`## ${section.heading}`);
+    if (section.body) parts.push(section.body);
+  }
+  for (const callout of page.callouts) {
+    parts.push(`> **${callout.kind}:** ${callout.text}`);
+  }
+  if (page.mermaid) {
+    parts.push("```mermaid\n" + page.mermaid + "\n```");
+  }
+  if (page.warnings.length) {
+    parts.push("## Warnings\n\n" + page.warnings.map((w) => `- ${w}`).join("\n"));
+  }
+  return parts.join("\n\n").trim();
+}
+
+const GROQ_SYSTEM = `You classify scraped page markdown into one JSON object.
+The markdown is the only source of truth. Do not invent facts, URLs, prices, names, or quotes.
+Drop site chrome: navigation, cookies, login, ads, share, related, follow-ups, app download, cookie consent.
+Keep the real article, thread, changelog, or docs content.
+Return JSON only, no markdown fences.
+
+Schema:
+{
+  "pageType": "article" | "guide" | "product" | "changelog" | "thread" | "docs" | "other",
+  "title": string,
+  "summary": string | null,
+  "sections": [{"heading": string, "body": string}],
+  "callouts": [{"kind": "note" | "warning" | "tip", "text": string}],
+  "mermaid": string | null,
+  "warnings": string[]
+}
+
+mermaid is a mermaid diagram body only, or null if the page has no real flow to draw.
+warnings lists gaps as [UNCLEAR FROM SOURCE].`;
+
+async function groqClassify(markdown: string): Promise<GroqPage> {
+  const key = Deno.env.get("GROQ_API_KEY");
+  if (!key) throw new Error("Missing GROQ_API_KEY");
+
+  const model = Deno.env.get("GROQ_MODEL") ?? "llama-3.3-70b-versatile";
+  const clipped = markdown.length > 100_000
+    ? markdown.slice(0, 100_000) + "\n\n[truncated]"
+    : markdown;
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: GROQ_SYSTEM },
+        { role: "user", content: clipped },
+      ],
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(`Groq ${res.status}: ${JSON.stringify(data)}`);
+  }
+
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content || typeof content !== "string") {
+    throw new Error("Groq returned empty content");
+  }
+  return validateGroqPage(extractJsonObject(content));
+}
+
+async function layoutWithGroq(rawMarkdown: string, fallbackTitle: string) {
+  if (!Deno.env.get("GROQ_API_KEY")) {
+    return {
+      title: fallbackTitle,
+      body: rawMarkdown,
+      pageType: "other",
+      layoutSource: "raw",
+    };
+  }
+
+  let lastErr = "Groq failed";
+  for (let i = 0; i < 2; i++) {
+    try {
+      const page = await groqClassify(rawMarkdown);
+      return {
+        title: page.title || fallbackTitle,
+        body: pageToMarkdown(page),
+        pageType: page.pageType,
+        layoutSource: "groq",
+      };
+    } catch (err) {
+      lastErr = err instanceof Error ? err.message : String(err);
+    }
+  }
+  return {
+    title: fallbackTitle,
+    body: rawMarkdown,
+    pageType: "other",
+    layoutSource: "raw",
+    groqError: lastErr,
+  };
+}
+
+function buildMarkdown(
+  sourceUrl: string,
+  title: string,
+  body: string,
+  extra: Record<string, string> = {},
+): string {
   const scrapedAt = new Date().toISOString();
   const cleanTitle = fixMojibake(stripBom(title)).replace(/\s+/g, " ").trim();
   const cleanBody = fixMojibake(stripBom(body)).trim();
+  const extraLines = Object.entries(extra)
+    .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+    .join("\n");
   return `---
 title: ${JSON.stringify(cleanTitle)}
 source: ${sourceUrl}
 scrapedAt: ${scrapedAt}
 layout: scrape
+${extraLines}
 ---
 
 ${cleanBody}
@@ -136,17 +357,39 @@ async function scrapeFirecrawl(url: string, waitFor: number, onlyMainContent: bo
   return { markdown, title };
 }
 
-async function githubPutFile(path: string, content: string, message: string) {
+function githubHeaders() {
   const token = Deno.env.get("GITHUB_TOKEN");
   if (!token) throw new Error("Missing GITHUB_TOKEN");
-
-  const api = `https://api.github.com/repos/${REPO}/contents/${path}`;
-  const headers = {
+  return {
     Authorization: `Bearer ${token}`,
     Accept: "application/vnd.github+json",
     "Content-Type": "application/json",
     "User-Agent": "zamplandoc-deno-scrape",
   };
+}
+
+function decodeGithubContent(b64: string): string {
+  const bin = atob(b64.replace(/\n/g, ""));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+async function githubGetFile(path: string): Promise<string | null> {
+  const api = `https://api.github.com/repos/${REPO}/contents/${path}`;
+  const res = await fetch(`${api}?ref=${encodeURIComponent(BRANCH)}`, {
+    headers: githubHeaders(),
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (typeof body.content !== "string") return null;
+  return decodeGithubContent(body.content);
+}
+
+async function githubPutFile(path: string, content: string, message: string) {
+  const api = `https://api.github.com/repos/${REPO}/contents/${path}`;
+  const headers = githubHeaders();
 
   let sha: string | undefined;
   const existing = await fetch(`${api}?ref=${encodeURIComponent(BRANCH)}`, { headers });
@@ -182,7 +425,8 @@ const ALLOWED_ORIGINS = new Set([
 
 const STEPS = [
   { id: "queued", label: "Got your URL" },
-  { id: "scrape", label: "Reading the page" },
+  { id: "scrape", label: "Firecrawl reading the page" },
+  { id: "layout", label: "Groq shaping the page" },
   { id: "write", label: "Saving markdown" },
   { id: "commit", label: "Pushing to GitHub" },
   { id: "pages", label: "GitHub Pages building" },
@@ -243,9 +487,28 @@ async function runScrape(
   progress("queued", { slug, pageUrl });
   progress("scrape");
   const scraped = await scrapeFirecrawl(sourceUrl, waitFor, onlyMainContent);
+  const contentHash = await sha256Hex(scraped.markdown);
+
+  const existing = await githubGetFile(filePath);
+  if (existing && parseFrontHash(existing) === contentHash) {
+    progress("layout", { skipped: true, reason: "unchanged" });
+    progress("write", { skipped: true });
+    progress("commit", { skipped: true });
+    progress("pages", { pageUrl });
+    if (waitPages) await waitForLivePage(pageUrl);
+    progress("done", { slug, pageUrl, path: filePath, sourceUrl, skipped: true });
+    return { slug, pageUrl, path: filePath, sourceUrl, skipped: true };
+  }
+
+  progress("layout");
+  const laid = await layoutWithGroq(scraped.markdown, scraped.title);
 
   progress("write");
-  const markdown = buildMarkdown(sourceUrl, scraped.title, scraped.markdown);
+  const markdown = buildMarkdown(sourceUrl, laid.title, laid.body, {
+    contentHash,
+    pageType: laid.pageType,
+    layoutSource: laid.layoutSource,
+  });
 
   progress("commit");
   await githubPutFile(filePath, markdown, `scrape: update ${slug}`);

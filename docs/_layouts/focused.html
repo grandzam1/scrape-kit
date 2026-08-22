@@ -5,10 +5,11 @@
 </head>
 <body>
   <div id="portal-shell" class="portal-theme" data-mobile>
+    {% include theme-toggle.html %}
     <header class="portal-fixed-top-bar">
       <a class="back" href="{{ '/' | relative_url }}" aria-label="Back">←</a>
       <div class="title">{{ page.title | default: "Scrape" }}</div>
-      <button class="theme-toggle" type="button" data-theme-toggle>Dark mode</button>
+      <span class="bar-spacer" aria-hidden="true"></span>
     </header>
     <main class="portal-shell-content portal-shell-content--focused">
       {{ content }}
