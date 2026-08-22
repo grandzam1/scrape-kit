@@ -556,17 +556,13 @@ function emptyRun(): RunLog {
   return row;
 }
 
-function runValues(run: RunLog): string[] {
-  return RUN_HEADERS.map((key) => run[key] ?? "");
-}
-
 async function composioExecute(slug: string, args: Record<string, unknown>) {
   const apiKey = Deno.env.get("COMPOSIO_API_KEY");
   const userId = Deno.env.get("COMPOSIO_USER_ID");
   if (!apiKey || !userId) {
     throw new Error("Missing COMPOSIO_API_KEY or COMPOSIO_USER_ID");
   }
-  const account = Deno.env.get("COMPOSIO_GOOGLE_ACCOUNT_ID");
+  const account = Deno.env.get("COMPOSIO_AIRTABLE_ACCOUNT_ID") ?? "ca_xzi4VNLxHNMu";
   const res = await fetch(
     `https://backend.composio.dev/api/v3.1/tools/execute/${encodeURIComponent(slug)}`,
     {
@@ -577,8 +573,8 @@ async function composioExecute(slug: string, args: Record<string, unknown>) {
       },
       body: JSON.stringify({
         user_id: userId,
+        connected_account_id: account,
         arguments: args,
-        ...(account ? { connected_account_id: account } : {}),
       }),
     },
   );
@@ -589,18 +585,83 @@ async function composioExecute(slug: string, args: Record<string, unknown>) {
   return data;
 }
 
-async function upsertRun(run: RunLog): Promise<string | null> {
-  const spreadsheetId = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID");
-  if (!spreadsheetId) return "Missing GOOGLE_SHEETS_SPREADSHEET_ID";
-  const sheetName = Deno.env.get("GOOGLE_SHEETS_TAB") ?? "runs";
-  try {
-    await composioExecute("GOOGLESHEETS_UPSERT_ROWS", {
-      spreadsheetId,
-      sheetName,
-      keyColumn: "run_id",
-      headers: RUN_HEADERS,
-      rows: [runValues(run)],
+function airtableFields(run: RunLog): Record<string, string> {
+  const fields: Record<string, string> = {};
+  for (const key of RUN_HEADERS) fields[key] = run[key] ?? "";
+  return fields;
+}
+
+function extractRecordId(payload: unknown): string | null {
+  const walk = (v: unknown): string | null => {
+    if (!v || typeof v !== "object") return null;
+    const o = v as Record<string, unknown>;
+    if (typeof o.id === "string" && o.id.startsWith("rec")) return o.id;
+    if (Array.isArray(o.records) && o.records[0]) return walk(o.records[0]);
+    if (o.data) return walk(o.data);
+    return null;
+  };
+  return walk(payload);
+}
+
+let airtableReady: { baseId: string; table: string } | null = null;
+
+async function ensureRunsTable() {
+  if (airtableReady) return airtableReady;
+  const listed = await composioExecute("AIRTABLE_LIST_BASES", {});
+  const bases = (listed?.data?.bases ?? listed?.data?.data?.bases ?? []) as Array<
+    { id?: string; name?: string }
+  >;
+  const wanted = Deno.env.get("AIRTABLE_BASE_ID");
+  const named = bases.find((b) => (b.name || "").toLowerCase() === "scrape-kit");
+  const baseId = wanted || named?.id || bases[0]?.id;
+  if (!baseId) {
+    throw new Error(
+      "Airtable has no bases. In airtable.com create a base named scrape-kit (empty is fine), then scrape again.",
+    );
+  }
+  const tableName = Deno.env.get("AIRTABLE_TABLE") ?? "runs";
+  const schema = await composioExecute("AIRTABLE_GET_BASE_SCHEMA", { baseId, base_id: baseId });
+  const tables = (schema?.data?.tables ?? schema?.data?.data?.tables ?? []) as Array<{ name?: string }>;
+  const hasRuns = tables.some((t) => t.name === tableName);
+  if (!hasRuns) {
+    await composioExecute("AIRTABLE_CREATE_TABLE", {
+      base_id: baseId,
+      name: tableName,
+      description: "scrape-kit production run log",
+      fields: RUN_HEADERS.map((name) => ({
+        name,
+        type: name.endsWith("_error") ? "multilineText" : "singleLineText",
+      })),
     });
+  }
+  airtableReady = { baseId, table: tableName };
+  return airtableReady;
+}
+
+const airtableRecordIds = new Map<string, string>();
+
+async function upsertRun(run: RunLog): Promise<string | null> {
+  try {
+    const { baseId, table } = await ensureRunsTable();
+    const rec = airtableRecordIds.get(run.run_id);
+    if (rec) {
+      await composioExecute("AIRTABLE_UPDATE_RECORD", {
+        baseId,
+        tableIdOrName: table,
+        recordId: rec,
+        fields: airtableFields(run),
+        typecast: true,
+      });
+      return null;
+    }
+    const created = await composioExecute("AIRTABLE_CREATE_RECORD", {
+      baseId,
+      tableIdOrName: table,
+      fields: airtableFields(run),
+    });
+    const id = extractRecordId(created);
+    if (!id) throw new Error("Airtable create returned no record id");
+    airtableRecordIds.set(run.run_id, id);
     return null;
   } catch (err) {
     return err instanceof Error ? err.message : String(err);
@@ -769,7 +830,7 @@ Deno.serve(async (req) => {
       ok: true,
       service: "zamplandoc-scrape",
       ws: "/ws",
-      runsLog: Boolean(Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID") && Deno.env.get("COMPOSIO_API_KEY")),
+      runsLog: Boolean(Deno.env.get("COMPOSIO_API_KEY") && Deno.env.get("COMPOSIO_USER_ID")),
     });
   }
 

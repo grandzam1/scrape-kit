@@ -33,10 +33,15 @@ npm run scrape -- --job jobs/example-generic.yaml
 Deploy `deno-scrape/main.ts` to Deno Deploy. Env vars:
 
 - `FIRECRAWL_API_KEY`
-- `GROQ_API_KEY` (optional; without it the runner publishes Firecrawl markdown as-is)
+- `GROQ_API_KEY` (without it the run is **degraded** and the page is marked raw)
+- `COMPOSIO_API_KEY` + `COMPOSIO_USER_ID` (Airtable `runs` log via Composio)
+- `COMPOSIO_AIRTABLE_ACCOUNT_ID` (connected Airtable account)
+- `AIRTABLE_BASE_ID` optional if a base named `scrape-kit` already exists
 - `GITHUB_TOKEN` with `contents:write` on this repo
 - `GITHUB_REPO=grandzam1/scrape-kit`
 - `SCRAPE_SECRET`
+
+Connect **Airtable** in [Composio](https://app.composio.dev). Create one empty base named **scrape-kit** in Airtable (the API cannot create the first workspace/base). The runner then creates a `runs` table and upserts one record per scrape.
 
 ```bash
 curl -X POST "https://<your-app>.<org>.deno.net/scrape" \
