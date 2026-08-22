@@ -18,7 +18,10 @@ function json(data: unknown, status = 200) {
 
 function slugFromUrl(url: string): string {
   const u = new URL(url);
-  const raw = `${u.hostname}${u.pathname}`.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const hash = u.hash.replace(/^#/, "").toLowerCase();
+  const raw = `${u.hostname}${u.pathname}${hash ? "-" + hash : ""}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-");
   return raw.replace(/^-|-$/g, "") || "page";
 }
 
@@ -230,7 +233,7 @@ Schema:
 mermaid is a mermaid diagram body only, or null if the page has no real flow to draw.
 warnings lists gaps as [UNCLEAR FROM SOURCE].`;
 
-async function groqClassify(markdown: string): Promise<GroqPage> {
+async function groqClassify(markdown: string, fragment: string | null): Promise<GroqPage> {
   const key = Deno.env.get("GROQ_API_KEY");
   if (!key) throw new Error("Missing GROQ_API_KEY");
 
@@ -238,6 +241,10 @@ async function groqClassify(markdown: string): Promise<GroqPage> {
   const clipped = markdown.length > 100_000
     ? markdown.slice(0, 100_000) + "\n\n[truncated]"
     : markdown;
+
+  const focus = fragment
+    ? `\n\nThe URL hash is #${fragment}. Keep that version or section. Drop other changelog versions if they are clearly separate.`
+    : "";
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -251,7 +258,7 @@ async function groqClassify(markdown: string): Promise<GroqPage> {
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: GROQ_SYSTEM },
-        { role: "user", content: clipped },
+        { role: "user", content: clipped + focus },
       ],
     }),
   });
@@ -268,7 +275,11 @@ async function groqClassify(markdown: string): Promise<GroqPage> {
   return validateGroqPage(extractJsonObject(content));
 }
 
-async function layoutWithGroq(rawMarkdown: string, fallbackTitle: string) {
+async function layoutWithGroq(
+  rawMarkdown: string,
+  fallbackTitle: string,
+  fragment: string | null,
+) {
   if (!Deno.env.get("GROQ_API_KEY")) {
     return {
       title: fallbackTitle,
@@ -281,7 +292,7 @@ async function layoutWithGroq(rawMarkdown: string, fallbackTitle: string) {
   let lastErr = "Groq failed";
   for (let i = 0; i < 2; i++) {
     try {
-      const page = await groqClassify(rawMarkdown);
+      const page = await groqClassify(rawMarkdown, fragment);
       return {
         title: page.title || fallbackTitle,
         body: pageToMarkdown(page),
@@ -329,26 +340,62 @@ async function scrapeFirecrawl(url: string, waitFor: number, onlyMainContent: bo
   const key = Deno.env.get("FIRECRAWL_API_KEY");
   if (!key) throw new Error("Missing FIRECRAWL_API_KEY");
 
-  const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  let fragment = "";
+  try {
+    fragment = new URL(url).hash.replace(/^#/, "");
+  } catch {
+    fragment = "";
+  }
+
+  const actions = fragment
+    ? [
+      { type: "wait", milliseconds: 2000 },
+      {
+        type: "executeJavascript",
+        script: `location.hash = ${JSON.stringify("#" + fragment)};`,
+      },
+      { type: "wait", milliseconds: 2500 },
+    ]
+    : [];
+
+  const payloads = [
+    {
       url,
       formats: ["markdown", "links"],
       onlyMainContent,
-      waitFor,
-    }),
-  });
+      waitFor: fragment ? Math.max(waitFor, 6000) : waitFor,
+      maxAge: 0,
+      ...(actions.length ? { actions } : {}),
+    },
+    {
+      url: url.split("#")[0],
+      formats: ["markdown", "links"],
+      onlyMainContent,
+      waitFor: Math.max(waitFor, 4000),
+      maxAge: 0,
+    },
+  ];
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(`Firecrawl ${res.status}: ${JSON.stringify(data)}`);
+  let data: Record<string, unknown> | null = null;
+  let lastErr = "Firecrawl failed";
+  for (const body of payloads) {
+    const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    data = await res.json();
+    if (res.ok) break;
+    lastErr = `Firecrawl ${res.status}: ${JSON.stringify(data)}`;
+    data = null;
   }
+  if (!data) throw new Error(lastErr);
 
-  const markdown = data?.data?.markdown ?? data?.markdown;
+  const markdown = (data as { data?: { markdown?: string }; markdown?: string })?.data?.markdown ??
+    (data as { markdown?: string }).markdown;
   if (!markdown || typeof markdown !== "string" || !markdown.trim()) {
     throw new Error("Firecrawl returned no markdown");
   }
@@ -444,8 +491,15 @@ function corsHeaders(req: Request) {
 }
 
 function originOk(req: Request) {
-  const origin = req.headers.get("origin");
-  if (origin && ALLOWED_ORIGINS.has(origin)) return true;
+  const origin = req.headers.get("origin") ?? "";
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  try {
+    const host = new URL(origin).hostname;
+    if (host === "grandzam1.github.io" || host.endsWith(".github.io")) return true;
+    if (host === "localhost" || host === "127.0.0.1") return true;
+  } catch {
+    /* no origin */
+  }
   const secret = Deno.env.get("SCRAPE_SECRET");
   const q = new URL(req.url).searchParams.get("secret");
   const header = req.headers.get("x-scrape-secret");
@@ -501,7 +555,17 @@ async function runScrape(
   }
 
   progress("layout");
-  const laid = await layoutWithGroq(scraped.markdown, scraped.title);
+  const laid = await layoutWithGroq(
+    scraped.markdown,
+    scraped.title,
+    (() => {
+      try {
+        return new URL(sourceUrl).hash.replace(/^#/, "") || null;
+      } catch {
+        return null;
+      }
+    })(),
+  );
 
   progress("write");
   const markdown = buildMarkdown(sourceUrl, laid.title, laid.body, {

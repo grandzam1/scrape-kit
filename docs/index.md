@@ -8,9 +8,9 @@ title: Scrapes
   <p class="lede">Paste a URL. Watch it scrape. Open the live page.</p>
 </section>
 
-<form id="scrape-form" class="scrape-form">
+<form id="scrape-form" class="scrape-form" novalidate>
   <label for="scrape-url">Page URL</label>
-  <input id="scrape-url" name="url" type="url" required placeholder="https://example.com/article" autocomplete="url">
+  <input id="scrape-url" name="url" type="text" inputmode="url" required placeholder="https://example.com/article" autocomplete="url">
   <button class="scrape-go" type="submit" id="scrape-go">Scrape</button>
 </form>
 

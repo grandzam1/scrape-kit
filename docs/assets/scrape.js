@@ -137,10 +137,19 @@ function fail(text) {
   $("scrape-status").textContent = "Stopped.";
 }
 
-function startScrape(url) {
+function startScrape(rawUrl) {
   const wsUrl = window.SCRAPE_WS;
   if (!wsUrl) {
     fail("Missing scrape server.");
+    return;
+  }
+
+  let url = String(rawUrl || "").trim();
+  if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+  try {
+    new URL(url);
+  } catch {
+    fail("That does not look like a web address.");
     return;
   }
 
@@ -149,11 +158,13 @@ function startScrape(url) {
   resetUi();
   startCrawl(0, 8);
 
+  let settled = false;
+  const waitFor = url.includes("#") ? 8000 : 3000;
   const ws = new WebSocket(wsUrl);
   ws.onopen = () => {
     $("scrape-status").textContent = "Connected. Sending URL…";
     setCount(0, STEPS.length);
-    ws.send(JSON.stringify({ url }));
+    ws.send(JSON.stringify({ url, waitFor }));
   };
   ws.onmessage = (ev) => {
     let msg;
@@ -163,23 +174,28 @@ function startScrape(url) {
       return;
     }
     if (msg.step === "error") {
+      settled = true;
       fail(msg.error || "Scrape failed.");
       go.disabled = false;
       return;
     }
     applyStep(msg);
     if (msg.step === "done" && msg.pageUrl) {
+      settled = true;
       finishOk(msg);
       go.disabled = false;
     }
   };
   ws.onerror = () => {
+    if (settled) return;
+    settled = true;
     fail("Could not reach the scrape server.");
     go.disabled = false;
   };
   ws.onclose = () => {
     go.disabled = false;
     if (busy) setBusy(false);
+    if (!settled) fail("The scrape stopped before it finished.");
   };
 }
 
