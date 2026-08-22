@@ -6,7 +6,14 @@
     clone.querySelectorAll(".copy-btn, .copy-page").forEach(function (node) {
       node.remove();
     });
-    return (clone.innerText || clone.textContent || "").trim();
+    var headerTitle = ((document.querySelector(".changelog-version") || {}).textContent || "").trim();
+    var barTitle = ((document.querySelector(".portal-fixed-top-bar .title") || {}).textContent || "").trim();
+    var bodyText = (clone.innerText || clone.textContent || "").trim();
+    var parts = [];
+    if (headerTitle) parts.push(headerTitle);
+    if (barTitle && barTitle !== headerTitle) parts.push(barTitle);
+    if (bodyText) parts.push(bodyText);
+    return parts.join("\n\n");
   }
 
   function blockText(node) {
