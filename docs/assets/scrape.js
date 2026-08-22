@@ -91,6 +91,11 @@ function resetUi() {
   $("scrape-progress").hidden = false;
   $("scrape-done").hidden = true;
   $("scrape-error").hidden = true;
+  const warn = $("scrape-warn");
+  if (warn) {
+    warn.hidden = true;
+    warn.textContent = "";
+  }
   $("scrape-status").textContent = "Connecting…";
 }
 
@@ -126,7 +131,19 @@ function finishOk(msg) {
   const a = $("scrape-live");
   a.href = msg.pageUrl;
   a.textContent = msg.pageUrl;
-  $("scrape-status").textContent = "Live page ready.";
+  $("scrape-status").textContent =
+    msg.status === "degraded" ? "Live, with problems. Check the note below." : "Live page ready.";
+  if (msg.status === "degraded") {
+    const warn = $("scrape-warn");
+    if (warn) {
+      warn.hidden = false;
+      const bits = [];
+      if (msg.layoutSource === "raw") bits.push("Groq did not layout this page (raw Firecrawl).");
+      if (msg.groqError) bits.push(msg.groqError);
+      if (msg.sheetOk === "false" || msg.sheetError) bits.push("Runs log write failed.");
+      warn.textContent = bits.join(" ") || "This scrape finished as degraded.";
+    }
+  }
 }
 
 function fail(text) {

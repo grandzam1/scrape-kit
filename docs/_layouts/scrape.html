@@ -12,6 +12,12 @@ layout: focused
     {% if page.source %}
     <a class="changelog-source" href="{{ page.source }}">source</a>
     {% endif %}
+    {% if page.layoutSource == "raw" %}
+    <p class="scrape-flag">Groq did not layout this page. This is the Firecrawl scrape.</p>
+    {% endif %}
+    {% if page.groqError %}
+    <p class="scrape-flag">{{ page.groqError }}</p>
+    {% endif %}
   </header>
   <div class="changelog-body long-text markdown-body">
     {{ content }}

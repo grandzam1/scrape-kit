@@ -286,6 +286,7 @@ async function layoutWithGroq(
       body: rawMarkdown,
       pageType: "other",
       layoutSource: "raw",
+      groqError: "Missing GROQ_API_KEY",
     };
   }
 
@@ -524,6 +525,100 @@ async function waitForLivePage(pageUrl: string) {
   return false;
 }
 
+const RUN_HEADERS = [
+  "run_id",
+  "started_at",
+  "finished_at",
+  "status",
+  "source_url",
+  "fragment",
+  "slug",
+  "page_url",
+  "layout_source",
+  "groq_ok",
+  "groq_error",
+  "firecrawl_ok",
+  "firecrawl_error",
+  "github_ok",
+  "github_error",
+  "skipped_unchanged",
+  "sheet_ok",
+  "sheet_error",
+  "duration_ms",
+  "actor",
+];
+
+type RunLog = Record<string, string>;
+
+function emptyRun(): RunLog {
+  const row: RunLog = {};
+  for (const key of RUN_HEADERS) row[key] = "";
+  return row;
+}
+
+function runValues(run: RunLog): string[] {
+  return RUN_HEADERS.map((key) => run[key] ?? "");
+}
+
+async function composioExecute(slug: string, args: Record<string, unknown>) {
+  const apiKey = Deno.env.get("COMPOSIO_API_KEY");
+  const userId = Deno.env.get("COMPOSIO_USER_ID");
+  if (!apiKey || !userId) {
+    throw new Error("Missing COMPOSIO_API_KEY or COMPOSIO_USER_ID");
+  }
+  const account = Deno.env.get("COMPOSIO_GOOGLE_ACCOUNT_ID");
+  const res = await fetch(
+    `https://backend.composio.dev/api/v3.1/tools/execute/${encodeURIComponent(slug)}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        arguments: args,
+        ...(account ? { connected_account_id: account } : {}),
+      }),
+    },
+  );
+  const data = await res.json();
+  if (!res.ok || data?.successful === false) {
+    throw new Error(`Composio ${slug}: ${JSON.stringify(data).slice(0, 800)}`);
+  }
+  return data;
+}
+
+async function upsertRun(run: RunLog): Promise<string | null> {
+  const spreadsheetId = Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID");
+  if (!spreadsheetId) return "Missing GOOGLE_SHEETS_SPREADSHEET_ID";
+  const sheetName = Deno.env.get("GOOGLE_SHEETS_TAB") ?? "runs";
+  try {
+    await composioExecute("GOOGLESHEETS_UPSERT_ROWS", {
+      spreadsheetId,
+      sheetName,
+      keyColumn: "run_id",
+      headers: RUN_HEADERS,
+      rows: [runValues(run)],
+    });
+    return null;
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+}
+
+async function writeRun(run: RunLog) {
+  const err = await upsertRun(run);
+  if (err) {
+    run.sheet_ok = "false";
+    run.sheet_error = err.slice(0, 500);
+    return err;
+  }
+  run.sheet_ok = "true";
+  run.sheet_error = "";
+  return null;
+}
+
 type Progress = (step: string, extra?: Record<string, unknown>) => void;
 
 async function runScrape(
@@ -537,52 +632,116 @@ async function runScrape(
   const slug = String(slugInput ?? slugFromUrl(sourceUrl)).replace(/[^a-zA-Z0-9_-]/g, "-");
   const filePath = `docs/scrapes/${slug}/page.md`;
   const pageUrl = `${PAGES_BASE}/scrapes/${slug}/page.html`;
-
-  progress("queued", { slug, pageUrl });
-  progress("scrape");
-  const scraped = await scrapeFirecrawl(sourceUrl, waitFor, onlyMainContent);
-  const contentHash = await sha256Hex(scraped.markdown);
-
-  const existing = await githubGetFile(filePath);
-  if (existing && parseFrontHash(existing) === contentHash) {
-    progress("layout", { skipped: true, reason: "unchanged" });
-    progress("write", { skipped: true });
-    progress("commit", { skipped: true });
-    progress("pages", { pageUrl });
-    if (waitPages) await waitForLivePage(pageUrl);
-    progress("done", { slug, pageUrl, path: filePath, sourceUrl, skipped: true });
-    return { slug, pageUrl, path: filePath, sourceUrl, skipped: true };
+  const started = Date.now();
+  let fragment = "";
+  try {
+    fragment = new URL(sourceUrl).hash.replace(/^#/, "");
+  } catch {
+    fragment = "";
   }
 
-  progress("layout");
-  const laid = await layoutWithGroq(
-    scraped.markdown,
-    scraped.title,
-    (() => {
-      try {
-        return new URL(sourceUrl).hash.replace(/^#/, "") || null;
-      } catch {
-        return null;
-      }
-    })(),
-  );
+  const run = emptyRun();
+  run.run_id = crypto.randomUUID();
+  run.started_at = new Date().toISOString();
+  run.status = "queued";
+  run.source_url = sourceUrl;
+  run.fragment = fragment;
+  run.slug = slug;
+  run.page_url = pageUrl;
+  run.actor = waitPages ? "ws" : "post";
 
-  progress("write");
-  const markdown = buildMarkdown(sourceUrl, laid.title, laid.body, {
-    contentHash,
-    pageType: laid.pageType,
-    layoutSource: laid.layoutSource,
+  const sheetStartErr = await writeRun(run);
+  progress("queued", {
+    slug,
+    pageUrl,
+    runId: run.run_id,
+    status: run.status,
+    sheetOk: run.sheet_ok,
+    sheetError: run.sheet_error,
   });
 
-  progress("commit");
-  await githubPutFile(filePath, markdown, `scrape: update ${slug}`);
+  const finish = async (status: string, extra: Record<string, unknown> = {}) => {
+    run.status = status;
+    run.finished_at = new Date().toISOString();
+    run.duration_ms = String(Date.now() - started);
+    const sheetErr = await writeRun(run);
+    const payload = {
+      slug,
+      pageUrl,
+      path: filePath,
+      sourceUrl,
+      runId: run.run_id,
+      status,
+      layoutSource: run.layout_source,
+      groqError: run.groq_error,
+      sheetOk: run.sheet_ok,
+      sheetError: run.sheet_error || sheetStartErr || sheetErr || "",
+      ...extra,
+    };
+    progress("done", payload);
+    return payload;
+  };
 
-  progress("pages", { pageUrl });
-  if (waitPages) await waitForLivePage(pageUrl);
+  try {
+    progress("scrape");
+    const scraped = await scrapeFirecrawl(sourceUrl, waitFor, onlyMainContent);
+    run.firecrawl_ok = "true";
+    const contentHash = await sha256Hex(scraped.markdown);
 
-  progress("done", { slug, pageUrl, path: filePath, sourceUrl });
-  return { slug, pageUrl, path: filePath, sourceUrl };
-}
+    const existing = await githubGetFile(filePath);
+    if (existing && parseFrontHash(existing) === contentHash) {
+      run.skipped_unchanged = "true";
+      run.github_ok = "true";
+      run.layout_source = "unchanged";
+      progress("layout", { skipped: true, reason: "unchanged" });
+      progress("write", { skipped: true });
+      progress("commit", { skipped: true });
+      progress("pages", { pageUrl });
+      if (waitPages) await waitForLivePage(pageUrl);
+      return await finish("ok", { skipped: true });
+    }
+
+    progress("layout");
+    const laid = await layoutWithGroq(scraped.markdown, scraped.title, fragment || null);
+    run.layout_source = laid.layoutSource;
+    run.groq_ok = laid.layoutSource === "groq" ? "true" : "false";
+    run.groq_error = ("groqError" in laid && laid.groqError) ? laid.groqError : "";
+
+    progress("write");
+    const extra: Record<string, string> = {
+      contentHash,
+      pageType: laid.pageType,
+      layoutSource: laid.layoutSource,
+      runId: run.run_id,
+    };
+    if (run.groq_error) extra.groqError = run.groq_error;
+    const markdown = buildMarkdown(sourceUrl, laid.title, laid.body, extra);
+
+    progress("commit");
+    await githubPutFile(filePath, markdown, `scrape: update ${slug}`);
+    run.github_ok = "true";
+
+    progress("pages", { pageUrl });
+    let pagesOk = true;
+    if (waitPages) pagesOk = await waitForLivePage(pageUrl);
+
+    const degraded = run.groq_ok !== "true" || run.sheet_ok !== "true" || !pagesOk;
+    return await finish(degraded ? "degraded" : "ok", { skipped: false });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (run.firecrawl_ok !== "true") {
+      run.firecrawl_ok = "false";
+      run.firecrawl_error = message.slice(0, 500);
+    } else if (run.github_ok !== "true") {
+      run.github_ok = "false";
+      run.github_error = message.slice(0, 500);
+    }
+    run.status = "failed";
+    run.finished_at = new Date().toISOString();
+    run.duration_ms = String(Date.now() - started);
+    await writeRun(run);
+    throw err;
+  }
 
 function eventPayload(step: string, extra: Record<string, unknown> = {}) {
   const index = STEPS.findIndex((s) => s.id === step);
@@ -606,7 +765,12 @@ Deno.serve(async (req) => {
   }
 
   if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
-    return json({ ok: true, service: "zamplandoc-scrape", ws: "/ws" });
+    return json({
+      ok: true,
+      service: "zamplandoc-scrape",
+      ws: "/ws",
+      runsLog: Boolean(Deno.env.get("GOOGLE_SHEETS_SPREADSHEET_ID") && Deno.env.get("COMPOSIO_API_KEY")),
+    });
   }
 
   if (url.pathname === "/ws" && req.headers.get("upgrade")?.toLowerCase() === "websocket") {

@@ -40,6 +40,7 @@ title: Scrapes
   </ol>
 </div>
 <p id="scrape-error" class="scrape-error" hidden></p>
+<p id="scrape-warn" class="scrape-warn" hidden></p>
 <p id="scrape-done" class="scrape-done" hidden>
   Your page:
   <a id="scrape-live" href="#"></a>

@@ -310,6 +310,12 @@ html, body {
   font-weight: 400;
 }
 .scrape-error { color: #b42318; }
+.scrape-warn {
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 0.65rem 0.75rem;
+}
 .scrape-done { margin: 0 0 1.75rem; }
 .scrape-done a { color: var(--portal-primary); word-break: break-all; }
 
@@ -398,8 +404,13 @@ html, body {
   .pages[data-view="grid"] { grid-template-columns: 1fr; }
 }
 
-.changelog-header {
-  margin: 0.25rem 0 1.5rem;
+.scrape-flag {
+  margin: 0.75rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--foreground);
+  font-size: 13px;
 }
 
 .changelog-info {
