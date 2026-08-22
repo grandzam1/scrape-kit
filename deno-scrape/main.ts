@@ -591,7 +591,10 @@ async function composioExecute(slug: string, args: Record<string, unknown>) {
 
 function airtableFields(run: RunLog): Record<string, string> {
   const fields: Record<string, string> = {};
-  for (const key of RUN_HEADERS) fields[key] = run[key] ?? "";
+  for (const key of RUN_HEADERS) {
+    const value = (run[key] ?? "").trim();
+    fields[key] = value === "" ? "-" : value;
+  }
   return fields;
 }
 
@@ -714,6 +717,7 @@ async function runScrape(
   run.slug = slug;
   run.page_url = pageUrl;
   run.actor = waitPages ? "ws" : "post";
+  run.groq_ok = "pending";
 
   const sheetStartErr = await writeRun(run);
   progress("queued", {
@@ -754,16 +758,25 @@ async function runScrape(
     const contentHash = await sha256Hex(scraped.markdown);
 
     const existing = await githubGetFile(filePath);
-    if (existing && parseFrontHash(existing) === contentHash) {
+    const sameBody = Boolean(existing && parseFrontHash(existing) === contentHash);
+    const priorRaw = Boolean(existing && /layoutSource:\s*"raw"/.test(existing));
+
+    if (sameBody && !priorRaw) {
       run.skipped_unchanged = "true";
       run.github_ok = "true";
       run.layout_source = "unchanged";
+      run.groq_ok = "skipped";
+      run.groq_error = "Same Firecrawl body as last publish; Groq was not called";
       progress("layout", { skipped: true, reason: "unchanged" });
       progress("write", { skipped: true });
       progress("commit", { skipped: true });
       progress("pages", { pageUrl });
       if (waitPages) await waitForLivePage(pageUrl);
       return await finish("ok", { skipped: true });
+    }
+
+    if (sameBody && priorRaw) {
+      run.skipped_unchanged = "false";
     }
 
     progress("layout");
