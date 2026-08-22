@@ -1,0 +1,128 @@
+/*
+ portal-mobile-kit — framework-open shell CSS
+ Drop into any global stylesheet. Requires #portal-shell.portal-theme
+ Source: https://github.com/grandzam1/portal-mobile-kit
+*/
+
+:root {
+  --portal-safe-top: env(safe-area-inset-top, 0px);
+  --portal-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --portal-safe-left: env(safe-area-inset-left, 0px);
+  --portal-safe-right: env(safe-area-inset-right, 0px);
+  --portal-tab-bar-inner: 3.5rem;
+  --portal-focus-header-height: 3.5rem;
+  --portal-shell-clearance: calc(var(--portal-tab-bar-inner) + var(--portal-safe-bottom));
+}
+
+.portal-theme {
+  --portal-card-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+@media (max-width: 767px) {
+  #portal-shell.portal-theme {
+    padding-top: constant(safe-area-inset-top);
+    padding-top: var(--portal-safe-top);
+  }
+
+  .portal-shell-content--tab-bar {
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: var(--portal-shell-clearance);
+  }
+
+  .portal-fixed-top-bar {
+    top: constant(safe-area-inset-top);
+    top: var(--portal-safe-top);
+  }
+
+  .portal-fixed-bottom-bar {
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: var(--portal-safe-bottom);
+  }
+
+  .portal-mobile-nav {
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: var(--portal-safe-bottom);
+  }
+
+  .portal-mobile-nav__inner {
+    min-height: var(--portal-tab-bar-inner);
+  }
+
+  .portal-sheet-content[data-side="right"],
+  .portal-sheet-content[data-side="left"] {
+    padding-top: constant(safe-area-inset-top);
+    padding-top: var(--portal-safe-top);
+    box-sizing: border-box;
+  }
+
+  .portal-sheet-content[data-side="bottom"] {
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: var(--portal-safe-bottom);
+    box-sizing: border-box;
+  }
+
+  .portal-sheet-content[data-side="right"] > .portal-sheet-close,
+  .portal-sheet-content[data-side="left"] > .portal-sheet-close {
+    top: calc(1.5rem + constant(safe-area-inset-top));
+    top: calc(1.5rem + var(--portal-safe-top));
+  }
+
+  .portal-fixed-bottom-clearance {
+    padding-bottom: calc(5.5rem + constant(safe-area-inset-bottom));
+    padding-bottom: calc(5.5rem + var(--portal-safe-bottom));
+  }
+
+  [data-sonner-toaster][data-y-position="top"] {
+    top: calc(constant(safe-area-inset-top) + 0.75rem) !important;
+    top: calc(var(--portal-safe-top) + 0.75rem) !important;
+  }
+
+  html:has(#portal-shell),
+  body:has(#portal-shell),
+  #portal-shell.portal-theme,
+  #portal-shell.portal-theme *,
+  .portal-sheet-content,
+  .portal-sheet-content *,
+  [data-sonner-toaster] {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html:has(#portal-shell)::-webkit-scrollbar,
+  body:has(#portal-shell)::-webkit-scrollbar,
+  #portal-shell.portal-theme *::-webkit-scrollbar,
+  .portal-sheet-content *::-webkit-scrollbar,
+  [data-sonner-toaster]::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+    background: transparent;
+  }
+}
+
+[data-sonner-toast] {
+  background: var(--background, #fff) !important;
+  border-color: var(--border, #e5e7eb) !important;
+  color: var(--foreground, #111) !important;
+}
+
+[data-sonner-toast] [data-title] {
+  color: var(--foreground, #111) !important;
+}
+
+[data-sonner-toast] [data-description] {
+  color: var(--muted-foreground, #6b7280) !important;
+}
+
+[data-reduce-motion="true"] *,
+[data-reduce-motion="true"] *::before,
+[data-reduce-motion="true"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+[data-reduce-transparency="true"] [data-slot="dialog-overlay"],
+[data-reduce-transparency="true"] .fixed.inset-0.bg-black\/80 {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}

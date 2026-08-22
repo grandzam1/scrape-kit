@@ -1,0 +1,33 @@
+{
+  "colors": {
+    "primary": "#0ea5e9",
+    "primaryDark": "#0369a1",
+    "primaryLight": "#38bdf8",
+    "secondary": "#14b8a6",
+    "accent": "#ec4899",
+    "pageBg": "#f9fafb",
+    "cardBg": "#ffffff",
+    "foreground": "#111827",
+    "muted": "#6b7280",
+    "border": "#e5e7eb",
+    "primaryForeground": "#ffffff"
+  },
+  "typography": {
+    "fontFamily": "'Instrument Sans', ui-sans-serif, system-ui, sans-serif",
+    "fontUrl": "https://fonts.bunny.net/css?family=instrument-sans:400,500,600"
+  },
+  "layout": {
+    "maxWidth": "44rem",
+    "cardRadius": "0.75rem",
+    "contentPadding": "1.5rem",
+    "mobileNavClearance": "calc(3.5rem + env(safe-area-inset-bottom, 0px))"
+  },
+  "mobileNav": {
+    "variant": "flat",
+    "visibleOnRoutes": ["/"],
+    "items": [
+      { "key": "home", "title": "Home", "url": "/", "icon": "layout-grid" },
+      { "key": "github", "title": "GitHub", "url": "https://github.com/grandzam1/scrape-kit", "icon": "user" }
+    ]
+  }
+}

@@ -50,6 +50,13 @@ That commit triggers Pages.
 
 Site: https://grandzam1.github.io/scrape-kit/
 
+Shell, tokens, and PWA come from [portal-mobile-kit](https://github.com/grandzam1/portal-mobile-kit):
+
+- `docs/assets/portal-shell.css` — safe areas, tab clearance, focused header
+- `docs/config/theme.json` — color / type tokens
+- `docs/manifest.webmanifest` + `docs/icons/` — installable PWA
+- Home uses the **tab** shell; scrape articles use the **focused** shell (back + centered title, no tab bar)
+
 New files under `docs/scrapes/` render as articles.
 
 ## Modes

@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "scrape-kit",
+  "shortName": "Scrapes",
+  "startUrl": "/scrape-kit/",
+  "display": "standalone",
+  "scope": "/scrape-kit/",
+  "statusBar": {
+    "mobile": { "light": "#ffffff", "dark": "#0a0a0a" }
+  },
+  "backgroundColor": { "light": "#ffffff", "dark": "#0a0a0a" },
+  "themeColor": { "light": "#ffffff", "dark": "#0a0a0a" }
+}

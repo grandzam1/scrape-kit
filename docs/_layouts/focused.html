@@ -18,20 +18,14 @@
 </head>
 <body>
   <div id="portal-shell" class="portal-theme" data-mobile>
-    <main class="portal-shell-content portal-shell-content--tab-bar">
+    <header class="portal-fixed-top-bar">
+      <a class="back" href="{{ '/' | relative_url }}" aria-label="Back">←</a>
+      <div class="title">{{ page.title | default: "Scrape" }}</div>
+      <span></span>
+    </header>
+    <main class="portal-shell-content portal-shell-content--focused">
       {{ content }}
-      <p class="foot">
-        <a href="{{ '/' | relative_url }}">Home</a>
-        ·
-        <a href="https://github.com/grandzam1/scrape-kit">GitHub</a>
-      </p>
     </main>
-    <nav class="portal-mobile-nav" aria-label="Primary">
-      <div class="portal-mobile-nav__inner">
-        <a class="nav-item is-active" href="{{ '/' | relative_url }}">Home</a>
-        <a class="nav-item" href="https://github.com/grandzam1/scrape-kit">GitHub</a>
-      </div>
-    </nav>
   </div>
 </body>
 </html>
