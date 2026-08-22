@@ -1,14 +1,19 @@
 ---
 layout: focused
 ---
-<article class="article">
-  <p class="kicker">Scrape</p>
-  <h1>{{ page.title | default: page.slug | default: "Untitled" }}</h1>
-  <p class="meta">
-    {% if page.source %}<a href="{{ page.source }}">Source</a>{% endif %}
-    {% if page.scrapedAt %} · {{ page.scrapedAt | date: "%b %-d, %Y" }}{% endif %}
-  </p>
-  <div class="prose">
+<article class="changelog">
+  <header class="changelog-header">
+    <div class="changelog-info">
+      <div class="changelog-version">{{ page.title | default: "scrape" }}</div>
+      {% if page.scrapedAt %}
+      <div class="changelog-date">{{ page.scrapedAt | date: "%b %-d, %Y" }}</div>
+      {% endif %}
+    </div>
+    {% if page.source %}
+    <a class="changelog-source" href="{{ page.source }}">source</a>
+    {% endif %}
+  </header>
+  <div class="changelog-body long-text">
     {{ content }}
   </div>
 </article>

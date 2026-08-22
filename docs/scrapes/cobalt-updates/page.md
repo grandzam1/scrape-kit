@@ -1,20 +1,8 @@
 ﻿---
-title: "Cobalt updates"
+title: "11.2"
 source: https://cobalt.tools/updates
+scrapedAt: 2025-06-30
 ---
-# 
-        updates ~ cobalt
-    
-
-Source: https://cobalt.tools/updates#11.0
-
----
-??
-
-11.2
-
-June 30, 2025
-
 # local processing for everyone, subtitles, audio covers, and more
 
 ![meowth plush in a forest looking at the rising sun between the trees.](./images/img-001-b9ee646b69.png)

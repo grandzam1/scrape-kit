@@ -1,26 +1,22 @@
 {
   "colors": {
-    "primary": "#0ea5e9",
-    "primaryDark": "#0369a1",
-    "primaryLight": "#38bdf8",
-    "secondary": "#14b8a6",
-    "accent": "#ec4899",
-    "pageBg": "#f9fafb",
-    "cardBg": "#ffffff",
-    "foreground": "#111827",
-    "muted": "#6b7280",
-    "border": "#e5e7eb",
-    "primaryForeground": "#ffffff"
+    "primary": "#1f3249",
+    "primaryDark": "#1f3249",
+    "primaryLight": "#e0eeff",
+    "pageBg": "#f4f4f4",
+    "cardBg": "#f4f4f4",
+    "foreground": "#000000",
+    "muted": "#5c5c5c",
+    "border": "rgba(0, 0, 0, 0.08)",
+    "primaryForeground": "#e0eeff"
   },
   "typography": {
-    "fontFamily": "'Instrument Sans', ui-sans-serif, system-ui, sans-serif",
-    "fontUrl": "https://fonts.bunny.net/css?family=instrument-sans:400,500,600"
+    "fontFamily": "'IBM Plex Mono', ui-monospace, monospace",
+    "fontUrl": "https://fonts.bunny.net/css?family=ibm-plex-mono:400,500"
   },
   "layout": {
-    "maxWidth": "44rem",
-    "cardRadius": "0.75rem",
-    "contentPadding": "1.5rem",
-    "mobileNavClearance": "calc(3.5rem + env(safe-area-inset-bottom, 0px))"
+    "maxWidth": "42rem",
+    "cardRadius": "11px"
   },
   "mobileNav": {
     "variant": "flat",

@@ -5,7 +5,7 @@ title: Scrapes
 
 <section class="hero">
   <h1>Scraped pages</h1>
-  <p class="lede">Markdown from Firecrawl, in the portal-mobile-kit shell (tokens, safe areas, PWA).</p>
+  <p class="lede">scrapes, rendered like a cobalt changelog — no nested cards.</p>
 </section>
 
 <ul class="list">
