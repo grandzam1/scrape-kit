@@ -395,13 +395,17 @@ async function scrapeFirecrawl(url: string, waitFor: number, onlyMainContent: bo
   }
   if (!data) throw new Error(lastErr);
 
-  const markdown = (data as { data?: { markdown?: string }; markdown?: string })?.data?.markdown ??
-    (data as { markdown?: string }).markdown;
+  const payload = data as {
+    data?: { metadata?: { title?: string }; markdown?: string };
+    metadata?: { title?: string };
+    markdown?: string;
+  };
+  const markdown = payload?.data?.markdown ?? payload?.markdown;
   if (!markdown || typeof markdown !== "string" || !markdown.trim()) {
     throw new Error("Firecrawl returned no markdown");
   }
 
-  const title = data?.data?.metadata?.title ?? data?.metadata?.title ?? url;
+  const title = payload.data?.metadata?.title ?? payload.metadata?.title ?? url;
   return { markdown, title };
 }
 
@@ -803,6 +807,7 @@ async function runScrape(
     await writeRun(run);
     throw err;
   }
+}
 
 function eventPayload(step: string, extra: Record<string, unknown> = {}) {
   const index = STEPS.findIndex((s) => s.id === step);
