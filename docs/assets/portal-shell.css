@@ -19,9 +19,9 @@
 }
 
 @media (max-width: 767px) {
+  /* Header owns the iOS status-bar inset (portal-fixed-top-bar padding-top). */
   #portal-shell.portal-theme {
-    padding-top: constant(safe-area-inset-top);
-    padding-top: var(--portal-safe-top);
+    padding-top: 0;
   }
 
   .portal-shell-content--tab-bar {
@@ -30,8 +30,7 @@
   }
 
   .portal-fixed-top-bar {
-    top: constant(safe-area-inset-top);
-    top: var(--portal-safe-top);
+    top: 0;
   }
 
   .portal-fixed-bottom-bar {

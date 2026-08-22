@@ -5,7 +5,11 @@
 </head>
 <body>
   <div id="portal-shell" class="portal-theme" data-mobile>
-    {% include theme-toggle.html %}
+    <header class="portal-fixed-top-bar">
+      <span class="bar-spacer" aria-hidden="true"></span>
+      <div class="title">{{ page.title | default: site.title }}</div>
+      {% include theme-toggle.html %}
+    </header>
     <main class="portal-shell-content portal-shell-content--tab-bar">
       {{ content }}
       <p class="foot">
