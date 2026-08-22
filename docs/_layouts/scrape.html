@@ -1,0 +1,14 @@
+---
+layout: default
+---
+<article class="article">
+  <p class="kicker">Scrape</p>
+  <h1>{{ page.title | default: page.slug | default: "Untitled" }}</h1>
+  <p class="meta">
+    {% if page.source %}<a href="{{ page.source }}">Source</a>{% endif %}
+    {% if page.scrapedAt %} · {{ page.scrapedAt | date: "%b %-d, %Y" }}{% endif %}
+  </p>
+  <div class="prose">
+    {{ content }}
+  </div>
+</article>

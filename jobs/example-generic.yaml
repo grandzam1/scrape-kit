@@ -1,0 +1,34 @@
+name: example-generic
+mode: full
+
+source:
+  url: "https://cobalt.tools/updates#11.0"
+  type: web
+
+firecrawl:
+  formats:
+    - markdown
+  waitFor: 3000
+  maxAge: 0
+  onlyMainContent: true
+
+groq:
+  enabled: false
+
+clean:
+  removePhrases: []
+  removePatterns: []
+
+images:
+  download: true
+  dir: images
+  rewriteMarkdown: true
+  includeHtml: true
+  previewFriendly: true
+  maxImages: 50
+  timeoutMs: 15000
+
+output:
+  dir: output/cobalt-updates-11-0
+  markdown: page.md
+  raw: raw/cobalt-updates-11-0.json

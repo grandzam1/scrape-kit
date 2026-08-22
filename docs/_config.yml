@@ -1,0 +1,20 @@
+title: scrape-kit
+description: Readable archive of scraped pages
+url: https://grandzam1.github.io
+baseurl: /scrape-kit
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+exclude:
+  - Gemfile
+  - Gemfile.lock
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+  - scope:
+      path: "scrapes"
+    values:
+      layout: scrape

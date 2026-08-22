@@ -1,0 +1,24 @@
+{
+  "name": "scrape-kit",
+  "version": "1.0.0",
+  "description": "Config-driven scrape pipeline via Composio (Firecrawl + Groq connected accounts)",
+  "type": "module",
+  "bin": {
+    "scrape-kit": "./src/cli.js"
+  },
+  "scripts": {
+    "scrape": "node src/cli.js",
+    "scrape:full": "node src/cli.js --job jobs/chatgpt-full.yaml",
+    "scrape:last2": "node src/cli.js --job jobs/chatgpt-last-2.yaml",
+    "scrape:example": "node src/cli.js --job jobs/example-generic.yaml"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@composio/core": "^0.2.6",
+    "dotenv": "^16.6.1",
+    "sharp": "^0.35.3",
+    "yaml": "^2.9.0"
+  }
+}

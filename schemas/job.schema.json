@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ScrapeKitJob",
+  "type": "object",
+  "required": ["name", "mode", "source", "output"],
+  "additionalProperties": true,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "mode": { "type": "string", "enum": ["full", "extract"] },
+    "source": {
+      "type": "object",
+      "required": ["url", "type"],
+      "properties": {
+        "url": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "enum": ["web", "html_file", "markdown_file"] }
+      }
+    },
+    "firecrawl": { "type": "object" },
+    "clean": { "type": "object" },
+    "images": {
+      "type": "object",
+      "properties": {
+        "download": { "type": "boolean" },
+        "dir": { "type": "string" },
+        "rewriteMarkdown": { "type": "boolean" },
+        "includeHtml": { "type": "boolean" },
+        "maxImages": { "type": "integer", "minimum": 0 },
+        "timeoutMs": { "type": "integer", "minimum": 1000 }
+      }
+    },
+    "groq": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "model": { "type": "string" },
+        "promptFile": { "type": "string" },
+        "validatePromptFile": { "type": "string" },
+        "temperature": { "type": "number" },
+        "responseFormat": { "type": "string" },
+        "maxRetries": { "type": "integer", "minimum": 0 },
+        "vars": { "type": "object" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["dir", "markdown"],
+      "properties": {
+        "dir": { "type": "string" },
+        "markdown": { "type": "string" },
+        "model": { "type": "string" },
+        "raw": { "type": "string" }
+      }
+    }
+  }
+}

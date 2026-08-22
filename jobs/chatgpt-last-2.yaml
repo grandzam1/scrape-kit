@@ -1,0 +1,48 @@
+name: chatgpt-last-2
+mode: extract
+
+source:
+  url: "https://chatgpt.com/share/6a886ffe-80e4-83ea-8318-3ee608609cdb"
+  type: web
+
+firecrawl:
+  formats:
+    - markdown
+  waitFor: 5000
+  maxAge: 0
+  onlyMainContent: true
+
+groq:
+  enabled: true
+  model: llama-3.3-70b-versatile
+  promptFile: prompts/extract.md
+  validatePromptFile: prompts/validate.md
+  temperature: 0
+  responseFormat: json_object
+  maxRetries: 1
+  vars:
+    last_n: 2
+    output_schema: |
+      {
+        "title": "string",
+        "exchanges": [
+          {
+            "user_message": "string",
+            "assistant_reply": "string"
+          }
+        ]
+      }
+
+clean:
+  removePhrases:
+    - "ChatGPT is AI and can make mistakes."
+    - "ChatGPT is AI and can make mistakes"
+    - "Skip to content"
+    - "This is a copy of a shared ChatGPT chat. It won't be added to memory."
+    - "Report conversation"
+
+output:
+  dir: output/chatgpt-last-2
+  markdown: conversation.md
+  model: model.json
+  raw: raw/chatgpt-last-2.json

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page.title %}{{ page.title }} · {% endif %}{{ site.title }}</title>
+  <link rel="stylesheet" href="{{ '/assets/style.css' | relative_url }}">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="{{ '/' | relative_url }}">{{ site.title }}</a>
+    <span class="tag">standalone scrape archive</span>
+  </header>
+  <main class="wrap">
+    {{ content }}
+  </main>
+  <footer class="foot">
+    <a href="{{ '/' | relative_url }}">All scrapes</a>
+    ·
+    <a href="https://github.com/grandzam1/zamplandoc">GitHub</a>
+  </footer>
+</body>
+</html>

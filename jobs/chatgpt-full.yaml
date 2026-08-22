@@ -1,0 +1,37 @@
+name: chatgpt-full
+mode: full
+
+source:
+  url: "https://chatgpt.com/share/6a886ffe-80e4-83ea-8318-3ee608609cdb"
+  type: web
+
+firecrawl:
+  formats:
+    - markdown
+  waitFor: 5000
+  maxAge: 0
+  onlyMainContent: true
+
+groq:
+  enabled: false
+
+clean:
+  removePhrases:
+    - "ChatGPT is AI and can make mistakes."
+    - "ChatGPT is AI and can make mistakes"
+    - "Skip to content"
+    - "This is a copy of a shared ChatGPT chat. It won't be added to memory."
+    - "Report conversation"
+
+images:
+  download: true
+  dir: images
+  rewriteMarkdown: true
+  includeHtml: true
+  maxImages: 100
+  timeoutMs: 20000
+
+output:
+  dir: output/chatgpt-full
+  markdown: conversation.md
+  raw: raw/chatgpt-full.json

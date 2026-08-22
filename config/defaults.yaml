@@ -1,0 +1,65 @@
+# Shared defaults. Job YAML overrides these.
+
+mode: full
+
+# Composio routes Firecrawl + Groq; API keys stay in Composio connected accounts.
+composio:
+  # Overridden by COMPOSIO_USER_ID in .env when set
+  userId: default
+  useLatest: true
+  # Optional: pin instead of latest
+  # toolkitVersions:
+  #   firecrawl: "20260615_00"
+  #   groqcloud: "20260615_00"
+  # Optional: force a specific connected account id
+  # connectedAccounts:
+  #   firecrawl: ca_xxx
+  #   groqcloud: ca_yyy
+  tools:
+    scrape: FIRECRAWL_SCRAPE
+    chat: GROQCLOUD_GROQ_CREATE_CHAT_COMPLETION
+
+firecrawl:
+  formats:
+    - markdown
+  waitFor: 5000
+  maxAge: 0
+  onlyMainContent: true
+  proxy: auto
+
+clean:
+  removePhrases:
+    - "ChatGPT is AI and can make mistakes."
+    - "ChatGPT is AI and can make mistakes"
+    - "Skip to content"
+    - "This is a copy of a shared ChatGPT chat. It won't be added to memory."
+    - "Report conversation"
+  removePatterns:
+    - "^\\[Skip to content\\]\\([^)]+\\)\\s*"
+    - "^## Chat history\\s*"
+
+groq:
+  enabled: false
+  model: llama-3.3-70b-versatile
+  temperature: 0
+  responseFormat: json_object
+  maxRetries: 1
+  promptFile: prompts/extract.md
+  validatePromptFile: prompts/validate.md
+  vars: {}
+
+# Optional: download images found in page markdown/html/links
+images:
+  download: false
+  dir: images
+  rewriteMarkdown: true
+  includeHtml: false
+  previewFriendly: true   # convert webp/avif → png for MD preview
+  maxImages: 100
+  timeoutMs: 20000
+
+output:
+  dir: output/default
+  markdown: conversation.md
+  model: model.json
+  raw: raw/default.json

@@ -1,0 +1,15 @@
+{
+  "scrapedAt": "2026-08-21T18:05:55.790Z",
+  "source": "https://cobalt.tools/updates#11.0",
+  "count": 1,
+  "failed": 0,
+  "downloads": [
+    {
+      "url": "https://cobalt.tools/update-banners/meowth_sunrise.webp",
+      "file": "./images/img-001-b9ee646b69.png",
+      "bytes": 1251683,
+      "contentType": "image/png",
+      "ok": true
+    }
+  ]
+}

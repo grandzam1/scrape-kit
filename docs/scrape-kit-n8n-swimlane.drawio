@@ -1,0 +1,148 @@
+﻿<mxfile host="app.diagrams.net" modified="2026-08-21T18:16:00.000Z" agent="Cursor" version="24.0.0">
+  <diagram id="scrape-kit-n8n" name="scrape-kit n8n swimlane">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3500" pageHeight="1100" math="0" shadow="0" adaptiveColors="auto">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title" value="scrape-kit — n8n nodes × swimlanes (code-aligned)" style="text;html=1;fontStyle=1;fontSize=16;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="8" width="720" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="subtitle" value="Full: …→D02→N07→D01→(N05?)→N06 · Extract: …→D02→C02→G01→G02→N07→… · Dashed = extract / skip / error" style="text;html=1;fontSize=11;fontColor=#666666;align=left;" vertex="1" parent="1">
+          <mxGeometry x="40" y="36" width="900" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane_user" value="USER" style="swimlane;horizontal=0;startSize=110;fillColor=#f5f5f5;html=1;" vertex="1" parent="1">
+          <mxGeometry x="0" y="70" width="3180" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane_node" value="NODE.JS" style="swimlane;horizontal=0;startSize=110;fillColor=#e8f4f8;html=1;" vertex="1" parent="1">
+          <mxGeometry x="0" y="220" width="3180" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane_composio" value="COMPOSIO" style="swimlane;horizontal=0;startSize=110;fillColor=#fff0e6;html=1;" vertex="1" parent="1">
+          <mxGeometry x="0" y="370" width="3180" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane_firecrawl" value="FIRECRAWL" style="swimlane;horizontal=0;startSize=110;fillColor=#e8f5e9;html=1;" vertex="1" parent="1">
+          <mxGeometry x="0" y="520" width="3180" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane_groq" value="GROQ" style="swimlane;horizontal=0;startSize=110;fillColor=#fff9e6;html=1;" vertex="1" parent="1">
+          <mxGeometry x="0" y="670" width="3180" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="lane_disk" value="DISK" style="swimlane;horizontal=0;startSize=110;fillColor=#fce4ec;html=1;" vertex="1" parent="1">
+          <mxGeometry x="0" y="820" width="3180" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="U01" value="○ U01&#xa;Run CLI --job" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="lane_user">
+          <mxGeometry x="120" y="40" width="120" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="U02" value="○ U02&#xa;Open artifacts" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="lane_user">
+          <mxGeometry x="2820" y="40" width="120" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="N01" value="▢ N01&#xa;Load config" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="lane_node">
+          <mxGeometry x="300" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="N02" value="▢ N02&#xa;Build scrape args" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="lane_node">
+          <mxGeometry x="480" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="N04" value="▢ N04&#xa;Clean markdown" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="lane_node">
+          <mxGeometry x="1200" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="D02" value="◇ D02&#xa;mode?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="lane_node">
+          <mxGeometry x="1380" y="35" width="140" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="N07" value="▢ N07&#xa;Render markdown" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="lane_node">
+          <mxGeometry x="2100" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="D01" value="◇ D01&#xa;images.download?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="lane_node">
+          <mxGeometry x="2280" y="35" width="140" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="N05" value="▢ N05&#xa;Download images" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="lane_node">
+          <mxGeometry x="2460" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="E01" value="▣ E01&#xa;Fail → exit(1)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="lane_node">
+          <mxGeometry x="1740" y="45" width="140" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="C01" value="⬡ C01&#xa;FIRECRAWL_SCRAPE&#xa;(router)" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="lane_composio">
+          <mxGeometry x="660" y="35" width="150" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="C02" value="⬡ C02&#xa;GROQ chat tool&#xa;(router)" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="lane_composio">
+          <mxGeometry x="1560" y="35" width="150" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="F01" value="⬡ F01&#xa;Scrape page&#xa;#hash may ignore" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="lane_firecrawl">
+          <mxGeometry x="840" y="35" width="150" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="G01" value="⬡ G01&#xa;Extract JSON" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="lane_groq">
+          <mxGeometry x="1740" y="35" width="150" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="G02" value="◇ G02&#xa;Valid vs source?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="lane_groq">
+          <mxGeometry x="1920" y="35" width="140" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="N03" value="📄 N03&#xa;Write raw/*.json" style="shape=mxgraph.flowchart.document;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="lane_disk">
+          <mxGeometry x="1020" y="35" width="130" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="N06" value="📄 N06&#xa;Write output/*" style="shape=mxgraph.flowchart.document;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="lane_disk">
+          <mxGeometry x="2640" y="35" width="130" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="U01" target="N01" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="N01" target="N02" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="N02" target="C01" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="C01" target="F01" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="F01" target="N03" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="N03" target="N04" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="N04" target="D02" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e8" value="full" edge="1" parent="1" source="D02" target="N07" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;fontStyle=1;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e9" value="extract" edge="1" parent="1" source="D02" target="C02" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;dashed=1;strokeColor=#d79b00;fontStyle=1;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="C02" target="G01" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;dashed=1;strokeColor=#d79b00;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="G01" target="G02" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;dashed=1;strokeColor=#d79b00;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e12" value="ok" edge="1" parent="1" source="G02" target="N07" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;dashed=1;strokeColor=#d79b00;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e13" value="retry" edge="1" parent="1" source="G02" target="G01" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;dashed=1;strokeColor=#9673a6;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e14" value="fail" edge="1" parent="1" source="G02" target="E01" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;dashed=1;strokeColor=#b85450;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="N07" target="D01" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e16" value="YES" edge="1" parent="1" source="D01" target="N05" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;fontStyle=1;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="N05" target="N06" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e18" value="NO" edge="1" parent="1" source="D01" target="N06" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;dashed=1;fontStyle=1;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e19" edge="1" parent="1" source="N06" target="U02" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e20" value="error" edge="1" parent="1" source="F01" target="E01" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;dashed=1;strokeColor=#b85450;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e21" value="error" edge="1" parent="1" source="C01" target="E01" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;dashed=1;strokeColor=#b85450;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
