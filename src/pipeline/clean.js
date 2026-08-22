@@ -1,8 +1,10 @@
+import { fixMojibake } from "../lib/mojibake.js";
+
 /**
  * Deterministic cleanup from job.clean config — no LLM.
  */
 export function cleanMarkdown(markdown, clean = {}, meta = {}) {
-  let out = String(markdown ?? "");
+  let out = fixMojibake(String(markdown ?? ""));
 
   for (const phrase of clean.removePhrases || []) {
     if (!phrase) continue;

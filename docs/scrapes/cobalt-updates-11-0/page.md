@@ -1,4 +1,4 @@
-﻿---
+---
 title: "11.0"
 source: https://cobalt.tools/updates#11.0
 scrapedAt: 2025-05-29
@@ -7,43 +7,43 @@ scrapedAt: 2025-05-29
 
 ![meowth plush in a forest looking at the rising sun between the trees.](./images/img-001-b9ee646b69.png)
 
-itâ€™s summertime! even though itâ€™s been rainy for us lately, the sun is right on the horizon, just like this cobalt update. we improved local processing, added long-awaited features, and improved a ton of other stuff.
+it’s summertime! even though it’s been rainy for us lately, the sun is right on the horizon, just like this cobalt update. we improved local processing, added long-awaited features, and improved a ton of other stuff.
 
-hereâ€™s whatâ€™s new since 11.0:
+here’s what’s new since 11.0:
 
 ## on-device media processing
 
-local processing is now enabled for everyone by default! it allows for faster downloading, file consistency, and best media compatibility. in this update, we optimized it to work on older browsers, just so no oneâ€™s missing out on cobalt due to having outdated software.
+local processing is now enabled for everyone by default! it allows for faster downloading, file consistency, and best media compatibility. in this update, we optimized it to work on older browsers, just so no one’s missing out on cobalt due to having outdated software.
 
-thanks to local processing, we were able to add **audio covers** in this update. cobalt will automatically add covers/thumbnails from youtube or soundcloud, and itâ€™ll be cropped to a square when needed. really cool stuff, and it just works!
+thanks to local processing, we were able to add **audio covers** in this update. cobalt will automatically add covers/thumbnails from youtube or soundcloud, and it’ll be cropped to a square when needed. really cool stuff, and it just works!
 
-please let us know if local processing doesnâ€™t work properly on your device, weâ€™ll try to improve it!
+please let us know if local processing doesn’t work properly on your device, we’ll try to improve it!
 
 ## video subtitles
 
-we added support for downloading videos with subtitles! in this update, we added full support for subtitles from: `youtube`, `twitter`, `tiktok`, `vimeo`, `loom`, `vk video`, and `rutube`. weâ€™ll keep adding support for more services in the future!
+we added support for downloading videos with subtitles! in this update, we added full support for subtitles from: `youtube`, `twitter`, `tiktok`, `vimeo`, `loom`, `vk video`, and `rutube`. we’ll keep adding support for more services in the future!
 
-to download subtitles, just pick your preferred language in [metadata settings](https://cobalt.tools/settings/metadata#subtitles)! cobalt will add subtitles in this language if theyâ€™re available.
+to download subtitles, just pick your preferred language in [metadata settings](https://cobalt.tools/settings/metadata#subtitles)! cobalt will add subtitles in this language if they’re available.
 
-pro-tip: if you donâ€™t need audio, you can save a bit of storage by switching to the â€œmuteâ€ mode on the home page. youâ€™ll get a mute video with subtitles and the rest of the metadata!
+pro-tip: if you don’t need audio, you can save a bit of storage by switching to the “mute” mode on the home page. you’ll get a mute video with subtitles and the rest of the metadata!
 
-donâ€™t want metadata or subtitles? just [disable metadata](https://cobalt.tools/settings/metadata#metadata) in settings, and cobalt wonâ€™t add anything.
+don’t want metadata or subtitles? just [disable metadata](https://cobalt.tools/settings/metadata#metadata) in settings, and cobalt won’t add anything.
 
 ## youtube downloading
 
 downloading from youtube on the main instance is restored! sorry that it took a bit over a week; we were trying our best to speed it up.
 
-hopefully itâ€™ll last for a while, but we think downloading from youtube will get significantly more annoying/complex in next few weeks-months. **right now is the best time to download everything youâ€™ve been putting off**, either with cobalt or other tools.
+hopefully it’ll last for a while, but we think downloading from youtube will get significantly more annoying/complex in next few weeks-months. **right now is the best time to download everything you’ve been putting off**, either with cobalt or other tools.
 
 **update**: unfortunately it did not last, youtube is unavailable on the main instance again. we will try one more way soon and update this changelog and post about it on socials accordingly.
 
-weâ€™re not trying to scare you; itâ€™s our educated guess based on what youtube has been doing lately:
+we’re not trying to scare you; it’s our educated guess based on what youtube has been doing lately:
 
-- roll out of SABR & related limitations for more clients. SABR is Server ABR, Googleâ€™s proprietary HLS alternative, controlled by the server.
+- roll out of SABR & related limitations for more clients. SABR is Server ABR, Google’s proprietary HLS alternative, controlled by the server.
 - growing potoken enforcement.
-- various other experiments to restrict â€œunauthorized accessâ€.
+- various other experiments to restrict “unauthorized access”.
 
-we currently have no exact plan on how to handle SABR in cobalt, but we will try to figure it out. for now, weâ€™re using youtube clients that donâ€™t have it enforced, but we have no clue for how long this will last.
+we currently have no exact plan on how to handle SABR in cobalt, but we will try to figure it out. for now, we’re using youtube clients that don’t have it enforced, but we have no clue for how long this will last.
 
 by the way, we also made it possible to [choose any preferred media container](https://cobalt.tools/settings/video#youtube-container) independently from the youtube video codec. could be useful for this occasion!
 
@@ -67,7 +67,7 @@ by the way, we also made it possible to [choose any preferred media container](h
   - the fetch worker is now less sensitive to network-related errors and returns a descriptive error whenever necessary.
   - the ffmpeg worker now returns an appropriate error when a required stream is missing.
   - the generic crash error is now localized.
-  - added a default file icon in case cobalt canâ€™t detect the file type.
+  - added a default file icon in case cobalt can’t detect the file type.
 - made frontend compatible with static cloudflare workers.
 - most used languages in [subtitle](https://cobalt.tools/settings/metadata#subtitles) and [audio track](https://cobalt.tools/settings/audio#youtube-dub) dropdowns are now on top.
 - default values of subtitle/audio track dropdowns are now localized.
@@ -99,7 +99,7 @@ as usual, you can check [all commits since the 11.0 release on github](https://g
 
 we hope that you enjoy this update and have a great rest of your day!
 
-~ your friends at imput â¤ï¸
+~ your friends at imput ❤️
 
 11.0
 

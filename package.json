@@ -10,7 +10,8 @@
     "scrape": "node src/cli.js",
     "scrape:full": "node src/cli.js --job jobs/chatgpt-full.yaml",
     "scrape:last2": "node src/cli.js --job jobs/chatgpt-last-2.yaml",
-    "scrape:example": "node src/cli.js --job jobs/example-generic.yaml"
+    "scrape:example": "node src/cli.js --job jobs/example-generic.yaml",
+    "fix:mojibake": "node scripts/fix-mojibake.mjs"
   },
   "engines": {
     "node": ">=18"
