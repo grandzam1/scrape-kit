@@ -1,13 +1,13 @@
 ---
 title: "SPACEX"
 source: https://spacexhq.notion.site/SPACEX-2680eb1ba7be80bfa594fb87e23055ed
-scrapedAt: 2026-08-23T04:47:23.539Z
+scrapedAt: 2026-08-26T12:07:05.332Z
 layout: scrape
 contentHash: "ff36e1c598f92c781ad2572173e1bca56da24c5e50de1ce9a6164a7f3ce070d2"
 pageType: "other"
 layoutSource: "raw"
-runId: "87389f79-6cd2-4fa2-8b8f-db2a0f4d8208"
-groqError: "Groq 413: {\"error\":{\"message\":\"Request too large for model `openai/gpt-oss-20b` in organization `org_01kvkjwyymfk48g04vths7ev5e` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 9060, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}"
+runId: "5364b706-f1e9-4897-a18d-b19b2c53df91"
+groqError: "Groq JSON missing title"
 ---
 
 [Skip to content](https://spacexhq.notion.site/SPACEX-2680eb1ba7be80bfa594fb87e23055ed#main)
