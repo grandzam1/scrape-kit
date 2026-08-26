@@ -139,13 +139,12 @@ function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
-function validateGroqPage(raw: unknown): GroqPage {
+function validateGroqPage(raw: unknown, fallbackTitle = "Untitled"): GroqPage {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new Error("Groq JSON must be an object");
   }
   const o = raw as Record<string, unknown>;
-  const title = asString(o.title).replace(/\s+/g, " ").trim();
-  if (!title) throw new Error("Groq JSON missing title");
+  let title = asString(o.title).replace(/\s+/g, " ").trim();
 
   const pageType = PAGE_TYPES.has(asString(o.pageType)) ? asString(o.pageType) : "other";
 
@@ -160,7 +159,6 @@ function validateGroqPage(raw: unknown): GroqPage {
       };
     })
     .filter((s) => s.heading || s.body);
-  if (!sections.length) throw new Error("Groq JSON missing sections");
 
   const calloutsIn = Array.isArray(o.callouts) ? o.callouts : [];
   const callouts = calloutsIn
@@ -183,6 +181,15 @@ function validateGroqPage(raw: unknown): GroqPage {
     : [];
 
   const summaryRaw = o.summary == null ? "" : asString(o.summary).trim();
+  if (!sections.length && summaryRaw) {
+    sections.push({ heading: "", body: summaryRaw });
+  }
+  if (!sections.length) {
+    throw new Error("Groq JSON missing sections");
+  }
+  if (!title) {
+    title = sections.find((s) => s.heading)?.heading || fallbackTitle;
+  }
   return {
     pageType,
     title,
@@ -218,6 +225,7 @@ The markdown is the only source of truth. Do not invent facts, URLs, prices, nam
 Drop site chrome: navigation, cookies, login, ads, share, related, follow-ups, app download, cookie consent.
 Keep the real article, thread, changelog, or docs content.
 Return JSON only, no markdown fences.
+If the user message is CHUNK i of n, extract only from that chunk. Do not guess missing chunks.
 
 Schema:
 {
@@ -233,17 +241,179 @@ Schema:
 mermaid is a mermaid diagram body only, or null if the page has no real flow to draw.
 warnings lists gaps as [UNCLEAR FROM SOURCE].`;
 
-async function groqClassify(markdown: string, fragment: string | null): Promise<GroqPage> {
+/** Free-tier Groq TPM is often 8000 — keep each request well under that. */
+function groqTpmBudget(): number {
+  const n = Number(Deno.env.get("GROQ_TPM_BUDGET") || 6500);
+  return Number.isFinite(n) && n >= 2000 ? Math.floor(n) : 6500;
+}
+
+function groqChunkChars(): number {
+  const n = Number(Deno.env.get("GROQ_CHUNK_CHARS") || 4500);
+  return Number.isFinite(n) && n >= 1200 ? Math.floor(n) : 4500;
+}
+
+function groqMaxChunks(): number {
+  const n = Number(Deno.env.get("GROQ_MAX_CHUNKS") || 4);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 4;
+}
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 3.5) + Math.ceil(GROQ_SYSTEM.length / 3.5) + 80;
+}
+
+function shrinkForGroq(markdown: string): string {
+  return markdown
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "[image]")
+    .replace(/\((https?:\/\/[^)\s]{90,})\)/g, (_, url: string) => `(${url.slice(0, 72)}…)`)
+    .replace(/https?:\/\/[^\s)\]>]{90,}/g, (url) => url.slice(0, 72) + "…")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function groqTooLarge(err: unknown): boolean {
+  const text = err instanceof Error ? err.message : String(err);
+  return /413|context[_ ]length|too large|too many tokens|maximum context|payload too large|request too large|rate_limit_exceeded|tokens per minute|TPM/i
+    .test(text);
+}
+
+function parseRequestedTokens(err: unknown): number | null {
+  const text = err instanceof Error ? err.message : String(err);
+  const m = text.match(/Requested\s+(\d+)/i);
+  return m ? Number(m[1]) : null;
+}
+
+async function throttleAfterGroq(charsUsed: number) {
+  const tokens = Math.ceil(charsUsed / 3.5) + 200;
+  const budget = groqTpmBudget();
+  // Stay under TPM without blowing Deno Deploy's ~150s request limit.
+  const waitMs = Math.min(18_000, Math.max(800, Math.ceil((tokens / budget) * 60_000)));
+  await sleep(waitMs);
+}
+
+function fitChunksUnderTpm(text: string, maxChars: number): string[] {
+  let size = maxChars;
+  while (size > 1200 && estimateTokens("x".repeat(size)) > groqTpmBudget()) {
+    size = Math.floor(size * 0.8);
+  }
+  let chunks = splitMarkdownChunks(text, size);
+  // Re-split any chunk that still looks oversized (dense URLs / code).
+  const out: string[] = [];
+  for (const chunk of chunks) {
+    if (estimateTokens(chunk) <= groqTpmBudget()) {
+      out.push(chunk);
+      continue;
+    }
+    const smaller = Math.max(1200, Math.floor(chunk.length * 0.55));
+    out.push(...splitMarkdownChunks(chunk, smaller));
+  }
+  return out.filter(Boolean);
+}
+
+function splitMarkdownChunks(text: string, maxChars: number): string[] {
+  const src = text.trim();
+  if (!src) return [];
+  if (src.length <= maxChars) return [src];
+
+  const blocks = src.split(/(?=\n#{1,6}\s)/);
+  const chunks: string[] = [];
+  let buf = "";
+
+  const flush = () => {
+    const piece = buf.trim();
+    if (piece) chunks.push(piece);
+    buf = "";
+  };
+
+  const pushHard = (block: string) => {
+    for (let i = 0; i < block.length; i += maxChars) {
+      const piece = block.slice(i, i + maxChars).trim();
+      if (piece) chunks.push(piece);
+    }
+  };
+
+  for (const block of blocks) {
+    if (block.length > maxChars) {
+      flush();
+      const paras = block.split(/\n{2,}/);
+      let inner = "";
+      for (const para of paras) {
+        if (para.length > maxChars) {
+          if (inner.trim()) chunks.push(inner.trim());
+          inner = "";
+          pushHard(para);
+          continue;
+        }
+        if (inner.length + para.length + 2 > maxChars) {
+          if (inner.trim()) chunks.push(inner.trim());
+          inner = para;
+        } else {
+          inner = inner ? inner + "\n\n" + para : para;
+        }
+      }
+      if (inner.trim()) chunks.push(inner.trim());
+      continue;
+    }
+    if (buf.length + block.length > maxChars) flush();
+    buf += block;
+  }
+  flush();
+  return chunks.filter(Boolean);
+}
+
+function mergeGroqPages(pages: GroqPage[]): GroqPage {
+  const first = pages[0];
+  const typed = pages.find((p) => p.pageType && p.pageType !== "other");
+  const sections: GroqPage["sections"] = [];
+  for (const page of pages) {
+    for (const section of page.sections) {
+      const prev = sections[sections.length - 1];
+      if (prev && prev.heading && prev.heading === section.heading) {
+        prev.body = [prev.body, section.body].filter(Boolean).join("\n\n");
+      } else {
+        sections.push({ heading: section.heading, body: section.body });
+      }
+    }
+  }
+  const callouts: GroqPage["callouts"] = [];
+  const seen = new Set<string>();
+  for (const page of pages) {
+    for (const callout of page.callouts) {
+      const key = `${callout.kind}:${callout.text}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      callouts.push(callout);
+    }
+  }
+  const warnings = pages.flatMap((p) => p.warnings);
+  if (pages.length > 1) {
+    warnings.push(`[UNCLEAR FROM SOURCE] classified in ${pages.length} Groq chunks`);
+  }
+  return {
+    pageType: typed?.pageType || first.pageType,
+    title: first.title,
+    summary: pages.map((p) => p.summary).find(Boolean) ?? null,
+    sections,
+    callouts,
+    mermaid: pages.map((p) => p.mermaid).find(Boolean) ?? null,
+    warnings,
+  };
+}
+
+async function groqClassify(
+  markdown: string,
+  fragment: string | null,
+  part = { index: 1, total: 1 },
+  fallbackTitle = "Untitled",
+): Promise<GroqPage> {
   const key = Deno.env.get("GROQ_API_KEY");
   if (!key) throw new Error("Missing GROQ_API_KEY");
 
   const model = Deno.env.get("GROQ_MODEL") ?? "openai/gpt-oss-20b";
-  const clipped = markdown.length > 100_000
-    ? markdown.slice(0, 100_000) + "\n\n[truncated]"
-    : markdown;
-
   const focus = fragment
     ? `\n\nThe URL hash is #${fragment}. Keep that version or section. Drop other changelog versions if they are clearly separate.`
+    : "";
+  const chunkNote = part.total > 1
+    ? `CHUNK ${part.index} of ${part.total}. Extract only this chunk. Title may be "${fallbackTitle}".\n\n`
     : "";
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -255,10 +425,11 @@ async function groqClassify(markdown: string, fragment: string | null): Promise<
     body: JSON.stringify({
       model,
       temperature: 0,
+      max_tokens: 2048,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: GROQ_SYSTEM },
-        { role: "user", content: clipped + focus },
+        { role: "user", content: chunkNote + markdown + focus },
       ],
     }),
   });
@@ -272,7 +443,89 @@ async function groqClassify(markdown: string, fragment: string | null): Promise<
   if (!content || typeof content !== "string") {
     throw new Error("Groq returned empty content");
   }
-  return validateGroqPage(extractJsonObject(content));
+  return validateGroqPage(extractJsonObject(content), fallbackTitle);
+}
+
+async function groqClassifySized(
+  markdown: string,
+  fragment: string | null,
+  part: { index: number; total: number },
+  fallbackTitle: string,
+  depth = 0,
+): Promise<GroqPage> {
+  // Never call Groq with a payload that already looks over the TPM budget.
+  if (estimateTokens(markdown) > groqTpmBudget() && markdown.length > 1200 && depth < 5) {
+    const pieces = fitChunksUnderTpm(markdown, Math.max(1200, Math.floor(markdown.length / 2)));
+    if (pieces.length >= 2) {
+      const pages: GroqPage[] = [];
+      for (const piece of pieces) {
+        pages.push(await groqClassifySized(piece, fragment, part, fallbackTitle, depth + 1));
+      }
+      return mergeGroqPages(pages);
+    }
+  }
+
+  try {
+    const page = await groqClassify(markdown, fragment, part, fallbackTitle);
+    await throttleAfterGroq(markdown.length);
+    return page;
+  } catch (err) {
+    if (!groqTooLarge(err) || markdown.length < 1200 || depth >= 5) throw err;
+    const requested = parseRequestedTokens(err);
+    const budget = groqTpmBudget();
+    await sleep(requested && requested > budget ? 12_000 : 2_000);
+    const targetChars = requested
+      ? Math.max(1200, Math.floor(markdown.length * ((budget * 0.6) / requested)))
+      : Math.max(1200, Math.floor(markdown.length / 2));
+    let pieces = fitChunksUnderTpm(markdown, targetChars);
+    if (pieces.length < 2) {
+      pieces = splitMarkdownChunks(markdown, Math.max(1200, Math.floor(markdown.length / 2)));
+    }
+    if (pieces.length < 2) throw err;
+    const pages: GroqPage[] = [];
+    for (let i = 0; i < pieces.length; i++) {
+      pages.push(await groqClassifySized(pieces[i], fragment, {
+        index: part.index,
+        total: part.total,
+      }, fallbackTitle, depth + 1));
+    }
+    return mergeGroqPages(pages);
+  }
+}
+
+async function groqClassifyAdaptive(
+  markdown: string,
+  fragment: string | null,
+  fallbackTitle: string,
+): Promise<GroqPage> {
+  const compact = shrinkForGroq(markdown);
+  const chunks = fitChunksUnderTpm(compact, groqChunkChars());
+  if (!chunks.length) throw new Error("Empty markdown for Groq");
+
+  const maxChunks = groqMaxChunks();
+  const use = chunks.slice(0, maxChunks);
+  const pages: GroqPage[] = [];
+  for (let i = 0; i < use.length; i++) {
+    pages.push(await groqClassifySized(use[i], fragment, {
+      index: i + 1,
+      total: use.length,
+    }, fallbackTitle));
+  }
+  const merged = mergeGroqPages(pages);
+  if (!merged.title || merged.title === "Untitled") merged.title = fallbackTitle;
+  if (chunks.length > maxChunks) {
+    merged.warnings.push(
+      `[UNCLEAR FROM SOURCE] only first ${maxChunks} of ${chunks.length} chunks sent to Groq (TPM / time limit)`,
+    );
+    const rest = chunks.slice(maxChunks).join("\n\n").trim();
+    if (rest) {
+      merged.sections.push({
+        heading: "More from source",
+        body: rest.slice(0, 12000) + (rest.length > 12000 ? "\n\n[truncated]" : ""),
+      });
+    }
+  }
+  return merged;
 }
 
 async function layoutWithGroq(
@@ -293,7 +546,7 @@ async function layoutWithGroq(
   let lastErr = "Groq failed";
   for (let i = 0; i < 2; i++) {
     try {
-      const page = await groqClassify(rawMarkdown, fragment);
+      const page = await groqClassifyAdaptive(rawMarkdown, fragment, fallbackTitle);
       return {
         title: page.title || fallbackTitle,
         body: pageToMarkdown(page),
@@ -406,7 +659,14 @@ async function scrapeFirecrawl(url: string, waitFor: number, onlyMainContent: bo
   }
 
   const title = payload.data?.metadata?.title ?? payload.metadata?.title ?? url;
-  return { markdown, title };
+  const meta = (payload.data?.metadata ?? payload.metadata ?? {}) as Record<string, unknown>;
+  const used = meta.creditsUsed ?? meta.credits_used ??
+    (data as { creditsUsed?: unknown }).creditsUsed;
+  return {
+    markdown,
+    title,
+    creditsUsed: used == null || used === "" ? "" : String(used),
+  };
 }
 
 function githubHeaders() {
@@ -548,9 +808,19 @@ const RUN_HEADERS = [
   "skipped_unchanged",
   "sheet_ok",
   "sheet_error",
+  "firecrawl_credits_used",
+  "firecrawl_credits_remaining",
+  "firecrawl_plan_credits",
+  "composio_tool_calls_30d",
+  "composio_calls_this_run",
+  "composio_rate_remaining",
+  "credits_error",
   "duration_ms",
   "actor",
 ];
+
+let lastComposioRateRemaining = "";
+let composioCallCount = 0;
 
 type RunLog = Record<string, string>;
 
@@ -583,10 +853,113 @@ async function composioExecute(slug: string, args: Record<string, unknown>) {
     },
   );
   const data = await res.json();
+  composioCallCount += 1;
+  lastComposioRateRemaining =
+    res.headers.get("x-ratelimit-remaining") ??
+    res.headers.get("X-RateLimit-Remaining") ??
+    lastComposioRateRemaining;
   if (!res.ok || data?.successful === false) {
     throw new Error(`Composio ${slug}: ${JSON.stringify(data).slice(0, 800)}`);
   }
   return data;
+}
+
+function creditNum(data: Record<string, unknown> | undefined, keys: string[]): string {
+  if (!data) return "";
+  for (const key of keys) {
+    const value = data[key];
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+async function firecrawlCreditUsage(): Promise<{ remaining: string; plan: string }> {
+  const key = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!key) throw new Error("Missing FIRECRAWL_API_KEY");
+  const headers = { Authorization: `Bearer ${key}` };
+  for (const path of ["/v2/team/credit-usage", "/v1/team/credit-usage"]) {
+    const res = await fetch(`https://api.firecrawl.dev${path}`, { headers });
+    const body = await res.json() as {
+      data?: Record<string, unknown>;
+      success?: boolean;
+    };
+    if (!res.ok || body?.success === false) continue;
+    const data = (body.data ?? body) as Record<string, unknown>;
+    const nested = (data.data && typeof data.data === "object")
+      ? data.data as Record<string, unknown>
+      : data;
+    return {
+      remaining: creditNum(nested, ["remainingCredits", "remaining_credits"]),
+      plan: creditNum(nested, ["planCredits", "plan_credits"]),
+    };
+  }
+  throw new Error("Firecrawl credit-usage unavailable");
+}
+
+async function composioUsageSnapshot(): Promise<{ toolCalls: string; rateRemaining: string }> {
+  const apiKey = Deno.env.get("COMPOSIO_API_KEY");
+  if (!apiKey) throw new Error("Missing COMPOSIO_API_KEY");
+  const to = Date.now();
+  const from = to - 30 * 24 * 60 * 60 * 1000;
+  const attempts: Array<Record<string, string>> = [
+    { "x-api-key": apiKey, "Content-Type": "application/json" },
+    { "x-org-api-key": apiKey, "Content-Type": "application/json" },
+    {
+      Authorization: `Bearer ${apiKey}`,
+      "x-api-key": apiKey,
+      "Content-Type": "application/json",
+    },
+  ];
+  let lastErr = "Composio usage unavailable";
+  for (const headers of attempts) {
+    const res = await fetch("https://backend.composio.dev/api/v3.1/project/usage/summary", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ from, to, entity_types: ["tool_calls"] }),
+    });
+    lastComposioRateRemaining =
+      res.headers.get("x-ratelimit-remaining") ??
+      res.headers.get("X-RateLimit-Remaining") ??
+      lastComposioRateRemaining;
+    const raw = await res.json() as Record<string, unknown>;
+    if (!res.ok) {
+      lastErr = `Composio usage ${res.status}: ${JSON.stringify(raw).slice(0, 200)}`;
+      continue;
+    }
+    const body = (raw.data && typeof raw.data === "object" ? raw.data : raw) as {
+      entities?: Record<string, { total_quantity?: string; event_count?: number }>;
+    };
+    const tool = body.entities?.tool_calls;
+    const toolCalls = tool?.total_quantity ??
+      (tool?.event_count != null ? String(tool.event_count) : "");
+    return {
+      toolCalls: toolCalls || "0",
+      rateRemaining: lastComposioRateRemaining || "-",
+    };
+  }
+  throw new Error(lastErr);
+}
+
+async function snapshotVendorCredits(run: RunLog) {
+  const errors: string[] = [];
+  try {
+    const fc = await firecrawlCreditUsage();
+    if (fc.remaining) run.firecrawl_credits_remaining = fc.remaining;
+    if (fc.plan) run.firecrawl_plan_credits = fc.plan;
+  } catch (err) {
+    errors.push(err instanceof Error ? err.message : String(err));
+  }
+  try {
+    const usage = await composioUsageSnapshot();
+    run.composio_tool_calls_30d = usage.toolCalls;
+    run.composio_rate_remaining = usage.rateRemaining;
+  } catch {
+    if (lastComposioRateRemaining) run.composio_rate_remaining = lastComposioRateRemaining;
+    if (!run.composio_tool_calls_30d) run.composio_tool_calls_30d = "-";
+  }
+  run.credits_error = errors.length ? errors.join(" | ").slice(0, 500) : "";
+  run.composio_calls_this_run = String(composioCallCount);
 }
 
 function airtableFields(run: RunLog): Record<string, string> {
@@ -628,7 +1001,11 @@ async function ensureRunsTable() {
   }
   const tableName = Deno.env.get("AIRTABLE_TABLE") ?? "runs";
   const schema = await composioExecute("AIRTABLE_GET_BASE_SCHEMA", { baseId, base_id: baseId });
-  const tables = (schema?.data?.tables ?? schema?.data?.data?.tables ?? []) as Array<{ name?: string }>;
+  const tables = (schema?.data?.tables ?? schema?.data?.data?.tables ?? []) as Array<{
+    id?: string;
+    name?: string;
+    fields?: Array<{ name?: string }>;
+  }>;
   const hasRuns = tables.some((t) => t.name === tableName);
   if (!hasRuns) {
     await composioExecute("AIRTABLE_CREATE_TABLE", {
@@ -640,6 +1017,26 @@ async function ensureRunsTable() {
         type: name.endsWith("_error") ? "multilineText" : "singleLineText",
       })),
     });
+  } else {
+    const table = tables.find((t) => t.name === tableName);
+    const have = new Set((table?.fields ?? []).map((f) => f.name).filter(Boolean) as string[]);
+    for (const name of RUN_HEADERS) {
+      if (have.has(name) || !table?.id) continue;
+      try {
+        await composioExecute("AIRTABLE_CREATE_FIELD", {
+          baseId,
+          base_id: baseId,
+          tableId: table.id,
+          table_id: table.id,
+          tableIdOrName: table.id,
+          name,
+          type: name.endsWith("_error") ? "multilineText" : "singleLineText",
+        });
+        have.add(name);
+      } catch {
+        /* column may already exist or toolkit args differ */
+      }
+    }
   }
   airtableReady = { baseId, table: tableName };
   return airtableReady;
@@ -701,6 +1098,7 @@ async function runScrape(
   const filePath = `docs/scrapes/${slug}/page.md`;
   const pageUrl = `${PAGES_BASE}/scrapes/${slug}/page.html`;
   const started = Date.now();
+  composioCallCount = 0;
   let fragment = "";
   try {
     fragment = new URL(sourceUrl).hash.replace(/^#/, "");
@@ -733,6 +1131,7 @@ async function runScrape(
     run.status = status;
     run.finished_at = new Date().toISOString();
     run.duration_ms = String(Date.now() - started);
+    await snapshotVendorCredits(run);
     const sheetErr = await writeRun(run);
     const payload = {
       slug,
@@ -745,6 +1144,12 @@ async function runScrape(
       groqError: run.groq_error,
       sheetOk: run.sheet_ok,
       sheetError: run.sheet_error || sheetStartErr || sheetErr || "",
+      firecrawlCreditsUsed: run.firecrawl_credits_used,
+      firecrawlCreditsRemaining: run.firecrawl_credits_remaining,
+      firecrawlPlanCredits: run.firecrawl_plan_credits,
+      composioToolCalls30d: run.composio_tool_calls_30d,
+      composioCallsThisRun: run.composio_calls_this_run,
+      composioRateRemaining: run.composio_rate_remaining,
       ...extra,
     };
     progress("done", payload);
@@ -755,6 +1160,7 @@ async function runScrape(
     progress("scrape");
     const scraped = await scrapeFirecrawl(sourceUrl, waitFor, onlyMainContent);
     run.firecrawl_ok = "true";
+    if (scraped.creditsUsed) run.firecrawl_credits_used = scraped.creditsUsed;
     const contentHash = await sha256Hex(scraped.markdown);
 
     const existing = await githubGetFile(filePath);
@@ -817,6 +1223,7 @@ async function runScrape(
     run.status = "failed";
     run.finished_at = new Date().toISOString();
     run.duration_ms = String(Date.now() - started);
+    await snapshotVendorCredits(run);
     await writeRun(run);
     throw err;
   }

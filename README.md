@@ -34,6 +34,8 @@ Deploy `deno-scrape/main.ts` to Deno Deploy. Env vars:
 
 - `FIRECRAWL_API_KEY`
 - `GROQ_API_KEY` (without it the run is **degraded** and the page is marked raw)
+- `GROQ_CHUNK_CHARS` optional (default `5500`); large pages are split under Groq’s free-tier TPM cap
+- `GROQ_TPM_BUDGET` optional (default `6500`); throttle between Groq chunks
 - `COMPOSIO_API_KEY` + `COMPOSIO_USER_ID` (Airtable `runs` log via Composio)
 - `COMPOSIO_AIRTABLE_ACCOUNT_ID` (connected Airtable account)
 - `AIRTABLE_BASE_ID` optional if a base named `scrape-kit` already exists
@@ -41,7 +43,7 @@ Deploy `deno-scrape/main.ts` to Deno Deploy. Env vars:
 - `GITHUB_REPO=grandzam1/scrape-kit`
 - `SCRAPE_SECRET`
 
-Connect **Airtable** in [Composio](https://app.composio.dev). Create one empty base named **scrape-kit** in Airtable (the API cannot create the first workspace/base). The runner then creates a `runs` table and upserts one record per scrape.
+Connect **Airtable** in [Composio](https://app.composio.dev). Create one empty base named **scrape-kit** in Airtable (the API cannot create the first workspace/base). The runner then creates a `runs` table and upserts one record per scrape. After each job it stores Firecrawl remaining/plan credits and Composio 30-day tool-call usage on that row.
 
 ```bash
 curl -X POST "https://<your-app>.<org>.deno.net/scrape" \
