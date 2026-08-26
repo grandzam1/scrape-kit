@@ -1,13 +1,13 @@
 ---
 title: "How to Make a Project Plan in 4 Steps | Coursera"
 source: https://www.coursera.org/articles/project-plan
-scrapedAt: 2026-08-23T03:53:48.490Z
+scrapedAt: 2026-08-26T11:54:12.609Z
 layout: scrape
-contentHash: "b5ce47f8b5b37b7ac30c5557ee5eb5610e5fd20e5d67cc9e2236285e04105872"
+contentHash: "7fa061399e06f375f4b73e3e880188335cc1af00ae4e584eca73ccb86ba38137"
 pageType: "other"
 layoutSource: "raw"
-runId: "979d580b-c731-4fd4-bbe8-51f313213b35"
-groqError: "Groq 413: {\"error\":{\"message\":\"Request too large for model `openai/gpt-oss-20b` in organization `org_01kvkjwyymfk48g04vths7ev5e` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 9230, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}"
+runId: "75732675-20cd-4f06-9069-75db29b8ee50"
+groqError: "Groq 429: {\"error\":{\"message\":\"Rate limit reached for model `openai/gpt-oss-20b` in organization `org_01kvkjwyymfk48g04vths7ev5e` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Used 7101, Requested 2311. Please try again in 10.59s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing\",\"type\":\"tokens\",\"code\":\"rate_limit_exceeded\"}}"
 ---
 
 Labor Day starts with $70+ in savings on Coursera Plus. **[Save 40% for 3 months.](https://www.coursera.org/courseraplus/special/cplus-monthly-august-2026-namer?utm_medium=coursera&utm_source=bluebanner&utm_campaign=2026AugustQ3CplusTentpole)**
@@ -159,7 +159,7 @@ Overview of the components of a project plan
 
 Filled StarFilled StarFilled StarFilled StarFilled Star
 
-[4.8 (14,902 ratings)\\
+[4.8 (14,905 ratings)\\
 \| \\
 \\
 770K Students Enrolled](https://www.coursera.org/learn/project-planning-google)
@@ -186,11 +186,11 @@ Beginner level\\
 \\
 Skills you'll build:\\
 \\
-Backlogs, Team Leadership, Quality Management, Project Planning, Web Presence, Quality Assessment, Quality Assurance, Project Management, Product Quality (QA/QC), Project Scoping, Project Management Life Cycle, Sprint Retrospectives, Interviewing Skills, Team Management, Stakeholder Communications, Scope Management, Change Management, Project Closure, Agile Software Development, Agile Project Management, User Story, Sprint Planning, Product Roadmaps, Team Oriented, Coaching, Team Building, Agile Product Development, Waterfall Methodology, Prioritization, Problem Solving, Project Management Software, Organizational Change, Agile Methodology, Influencing, Product Requirements, Risk Management, Milestones (Project Management), Project Documentation, Communication Planning, Procurement, Risk Mitigation, Project Estimation, Budgeting, Strategic Thinking, Project Schedules, Cost Management, Risk Management Framework, Project Risk Management, Document Management, Budget Management, Estimation, Cost Estimation, Issue Tracking, Project Coordination, Project Controls, Data Storytelling, Leadership and Management, Project Implementation, Generative AI, Prompt Engineering Tools, Branding, Prompt Engineering, Professional Development, AI literacy, Google Gemini, Smart Goals, Stakeholder Engagement, Stakeholder Management, Meeting Facilitation, AI Enablement, Discussion Facilitation, Stakeholder Analysis, Goal Setting, Resource Management, Performance Metric, Business Writing, Accountability Frameworks, Cost Benefit Analysis, Program Management, Organizational Structure\\
+Project Planning, Backlogs, Team Leadership, Quality Management, Project Closure, Project Scoping, Change Management, Quality Assessment, Quality Assurance, Project Management, Product Quality (QA/QC), Web Presence, Scope Management, Project Management Life Cycle, Interviewing Skills, Team Management, Stakeholder Communications, Sprint Retrospectives, Agile Project Management, Agile Software Development, User Story, Sprint Planning, Product Roadmaps, Organizational Change, Project Management Software, Team Oriented, Coaching, Agile Methodology, Waterfall Methodology, Influencing, Product Requirements, Team Building, Problem Solving, Prioritization, Agile Product Development, Professional Development, Generative AI, Google Gemini, Branding, Prompt Engineering Tools, AI literacy, Prompt Engineering, Stakeholder Analysis, Goal Setting, Project Documentation, Smart Goals, Resource Management, Stakeholder Engagement, Performance Metric, Business Writing, Stakeholder Management, Accountability Frameworks, Strategic Thinking, Cost Benefit Analysis, Risk Management, Project Risk Management, Issue Tracking, Leadership and Management, Project Implementation, Project Coordination, Project Controls, Data Storytelling, Milestones (Project Management), Communication Planning, AI Enablement, Discussion Facilitation, Meeting Facilitation, Organizational Structure, Program Management, Project Estimation, Procurement, Risk Mitigation, Budgeting, Risk Management Framework, Project Schedules, Estimation, Cost Estimation, Document Management, Budget Management, Cost Management\\
 \\
 4.8\\
 \\
-(145,080 ratings)](https://www.coursera.org/professional-certificates/google-project-management)
+(145,114 ratings)](https://www.coursera.org/professional-certificates/google-project-management)
 
 ![Google](https://d3njjcbhbojbot.cloudfront.net/api/utilities/v1/imageproxy/http://coursera-university-assets.s3.amazonaws.com/92/d0d1ee4a844037be9a2d349ee5f59d/GoogleG_FullColor_RGB.png?auto=format%2Ccompress&dpr=2&blur=200&px=8&max-w=60)
 
@@ -202,9 +202,9 @@ Get on the fast track to a career in project management. In this certificate pro
 
 4.8
 
-(145,080 ratings)
+(145,114 ratings)
 
-2,800,952 already enrolled
+2,805,620 already enrolled
 
 Beginner level
 
@@ -216,7 +216,7 @@ Learn at your own pace
 
 Skills you'll build:
 
-Backlogs, Team Leadership, Quality Management, Project Planning, Web Presence, Quality Assessment, Quality Assurance, Project Management, Product Quality (QA/QC), Project Scoping, Project Management Life Cycle, Sprint Retrospectives, Interviewing Skills, Team Management, Stakeholder Communications, Scope Management, Change Management, Project Closure, Agile Software Development, Agile Project Management, User Story, Sprint Planning, Product Roadmaps, Team Oriented, Coaching, Team Building, Agile Product Development, Waterfall Methodology, Prioritization, Problem Solving, Project Management Software, Organizational Change, Agile Methodology, Influencing, Product Requirements, Risk Management, Milestones (Project Management), Project Documentation, Communication Planning, Procurement, Risk Mitigation, Project Estimation, Budgeting, Strategic Thinking, Project Schedules, Cost Management, Risk Management Framework, Project Risk Management, Document Management, Budget Management, Estimation, Cost Estimation, Issue Tracking, Project Coordination, Project Controls, Data Storytelling, Leadership and Management, Project Implementation, Generative AI, Prompt Engineering Tools, Branding, Prompt Engineering, Professional Development, AI literacy, Google Gemini, Smart Goals, Stakeholder Engagement, Stakeholder Management, Meeting Facilitation, AI Enablement, Discussion Facilitation, Stakeholder Analysis, Goal Setting, Resource Management, Performance Metric, Business Writing, Accountability Frameworks, Cost Benefit Analysis, Program Management, Organizational Structure
+Project Planning, Backlogs, Team Leadership, Quality Management, Project Closure, Project Scoping, Change Management, Quality Assessment, Quality Assurance, Project Management, Product Quality (QA/QC), Web Presence, Scope Management, Project Management Life Cycle, Interviewing Skills, Team Management, Stakeholder Communications, Sprint Retrospectives, Agile Project Management, Agile Software Development, User Story, Sprint Planning, Product Roadmaps, Organizational Change, Project Management Software, Team Oriented, Coaching, Agile Methodology, Waterfall Methodology, Influencing, Product Requirements, Team Building, Problem Solving, Prioritization, Agile Product Development, Professional Development, Generative AI, Google Gemini, Branding, Prompt Engineering Tools, AI literacy, Prompt Engineering, Stakeholder Analysis, Goal Setting, Project Documentation, Smart Goals, Resource Management, Stakeholder Engagement, Performance Metric, Business Writing, Stakeholder Management, Accountability Frameworks, Strategic Thinking, Cost Benefit Analysis, Risk Management, Project Risk Management, Issue Tracking, Leadership and Management, Project Implementation, Project Coordination, Project Controls, Data Storytelling, Milestones (Project Management), Communication Planning, AI Enablement, Discussion Facilitation, Meeting Facilitation, Organizational Structure, Program Management, Project Estimation, Procurement, Risk Mitigation, Budgeting, Risk Management Framework, Project Schedules, Estimation, Cost Estimation, Document Management, Budget Management, Cost Management
 
 ## Frequently asked questions (FAQ)
 
