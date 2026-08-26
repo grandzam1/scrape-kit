@@ -253,8 +253,8 @@ function groqChunkChars(): number {
 }
 
 function groqMaxChunks(): number {
-  const n = Number(Deno.env.get("GROQ_MAX_CHUNKS") || 4);
-  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 4;
+  const n = Number(Deno.env.get("GROQ_MAX_CHUNKS") || 2);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 2;
 }
 
 function estimateTokens(text: string): number {
@@ -303,7 +303,7 @@ async function throttleAfterGroq(charsUsed: number) {
   const tokens = Math.ceil(charsUsed / 3.5) + 200;
   const budget = groqTpmBudget();
   // Leave headroom so the next chunk does not 429 mid-job.
-  const waitMs = Math.min(22_000, Math.max(2_000, Math.ceil((tokens / (budget * 0.7)) * 60_000)));
+  const waitMs = Math.min(12_000, Math.max(1_500, Math.ceil((tokens / (budget * 0.75)) * 60_000)));
   await sleep(waitMs);
 }
 
