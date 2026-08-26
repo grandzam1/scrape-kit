@@ -272,8 +272,18 @@ function shrinkForGroq(markdown: string): string {
 
 function groqTooLarge(err: unknown): boolean {
   const text = err instanceof Error ? err.message : String(err);
-  return /413|context[_ ]length|too large|too many tokens|maximum context|payload too large|request too large|rate_limit_exceeded|tokens per minute|TPM/i
+  // Single request bigger than the TPM cap (e.g. Requested 9230, Limit 8000).
+  const requested = parseRequestedTokens(err);
+  const budget = groqTpmBudget();
+  if (requested != null && requested > budget) return true;
+  return /413|context[_ ]length|too large|too many tokens|maximum context|payload too large|request too large/i
     .test(text);
+}
+
+function groqNeedsCooldown(err: unknown): boolean {
+  const text = err instanceof Error ? err.message : String(err);
+  return /429|rate_limit_exceeded|tokens per minute|TPM|try again in/i.test(text) &&
+    !groqTooLarge(err);
 }
 
 function parseRequestedTokens(err: unknown): number | null {
@@ -282,11 +292,18 @@ function parseRequestedTokens(err: unknown): number | null {
   return m ? Number(m[1]) : null;
 }
 
+function parseRetryAfterMs(err: unknown): number {
+  const text = err instanceof Error ? err.message : String(err);
+  const m = text.match(/try again in\s+([\d.]+)\s*s/i);
+  if (m) return Math.min(25_000, Math.ceil(Number(m[1]) * 1000) + 400);
+  return 5_000;
+}
+
 async function throttleAfterGroq(charsUsed: number) {
   const tokens = Math.ceil(charsUsed / 3.5) + 200;
   const budget = groqTpmBudget();
-  // Stay under TPM without blowing Deno Deploy's ~150s request limit.
-  const waitMs = Math.min(18_000, Math.max(800, Math.ceil((tokens / budget) * 60_000)));
+  // Leave headroom so the next chunk does not 429 mid-job.
+  const waitMs = Math.min(22_000, Math.max(2_000, Math.ceil((tokens / (budget * 0.7)) * 60_000)));
   await sleep(waitMs);
 }
 
@@ -416,34 +433,43 @@ async function groqClassify(
     ? `CHUNK ${part.index} of ${part.total}. Extract only this chunk. Title may be "${fallbackTitle}".\n\n`
     : "";
 
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0,
-      max_tokens: 2048,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: GROQ_SYSTEM },
-        { role: "user", content: chunkNote + markdown + focus },
-      ],
-    }),
-  });
+  let lastErr: unknown = "Groq failed";
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0,
+        max_tokens: 2048,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: GROQ_SYSTEM },
+          { role: "user", content: chunkNote + markdown + focus },
+        ],
+      }),
+    });
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(`Groq ${res.status}: ${JSON.stringify(data)}`);
-  }
+    const data = await res.json();
+    if (!res.ok) {
+      lastErr = new Error(`Groq ${res.status}: ${JSON.stringify(data)}`);
+      if (groqNeedsCooldown(lastErr) && attempt < 3) {
+        await sleep(parseRetryAfterMs(lastErr));
+        continue;
+      }
+      throw lastErr;
+    }
 
-  const content = data?.choices?.[0]?.message?.content;
-  if (!content || typeof content !== "string") {
-    throw new Error("Groq returned empty content");
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content || typeof content !== "string") {
+      throw new Error("Groq returned empty content");
+    }
+    return validateGroqPage(extractJsonObject(content), fallbackTitle);
   }
-  return validateGroqPage(extractJsonObject(content), fallbackTitle);
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
 async function groqClassifySized(
@@ -470,10 +496,16 @@ async function groqClassifySized(
     await throttleAfterGroq(markdown.length);
     return page;
   } catch (err) {
+    if (groqNeedsCooldown(err)) {
+      await sleep(parseRetryAfterMs(err));
+      const page = await groqClassify(markdown, fragment, part, fallbackTitle);
+      await throttleAfterGroq(markdown.length);
+      return page;
+    }
     if (!groqTooLarge(err) || markdown.length < 1200 || depth >= 5) throw err;
     const requested = parseRequestedTokens(err);
     const budget = groqTpmBudget();
-    await sleep(requested && requested > budget ? 12_000 : 2_000);
+    await sleep(2_000);
     const targetChars = requested
       ? Math.max(1200, Math.floor(markdown.length * ((budget * 0.6) / requested)))
       : Math.max(1200, Math.floor(markdown.length / 2));
