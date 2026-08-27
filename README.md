@@ -1,75 +1,66 @@
 # scrape-kit
 
-Standalone scrape pipeline: YAML jobs, Composio/Firecrawl, optional Deno HTTP runner, GitHub Pages.
+Scrape a URL → structured markdown on GitHub Pages → log the run in Airtable.
 
-This repo is **only** the scraper. The original `zamplandoc` workspace is unchanged.
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for product path, contracts, and roadmap.
 
-## What you get
+## Production path (use this)
 
 | Piece | Role |
 |---|---|
-| `src/` + `jobs/` | Local CLI (`node src/cli.js --job jobs/….yaml`) |
-| `deno-scrape/` | Cloud HTTP: Firecrawl → Groq JSON → markdown → `docs/scrapes/<slug>/page.md` |
-| `docs/` | GitHub Pages site for those markdown files |
+| `deno-scrape/` | Deno Deploy: Firecrawl → Groq layout → `docs/scrapes/<slug>/page.md` |
+| `docs/` | GitHub Pages site + scrape UI |
+| Airtable `runs` | One row per scrape (via Composio) |
 
-## Setup (local CLI)
+Site: https://grandzam1.github.io/scrape-kit/
 
-1. Connect **Firecrawl** in [Composio](https://app.composio.dev) (API key stays there).
-2. Groq is optional (`mode: extract` only).
+Paste a URL on the home page. The browser opens a websocket to the Deno runner, shows each step, then links the live page.
+
+### Deno Deploy env
+
+Required for a full run:
+
+- `FIRECRAWL_API_KEY`
+- `GROQ_API_KEY` (without it the page is **degraded** / `layoutSource: raw`)
+- `GITHUB_TOKEN` (`contents:write` on this repo)
+- `GITHUB_REPO=grandzam1/scrape-kit`
+- `SCRAPE_SECRET` (for `POST /scrape`)
+- `COMPOSIO_API_KEY` + `COMPOSIO_USER_ID`
+- `COMPOSIO_AIRTABLE_ACCOUNT_ID` (connected Airtable account — **required** for the runs log)
+
+Optional:
+
+- `GROQ_MODEL` (default `openai/gpt-oss-20b`)
+- `GROQ_CHUNK_CHARS` (default `4500`)
+- `GROQ_TPM_BUDGET` (default `6500`)
+- `GROQ_MAX_CHUNKS` (default `2`)
+- `AIRTABLE_BASE_ID` / `AIRTABLE_TABLE` (default table `runs`)
+- `GITHUB_BRANCH` / `PAGES_BASE`
+
+Create one empty Airtable base named **scrape-kit** (API cannot create the first workspace/base). The runner creates/patches the `runs` table.
+
+```bash
+curl -X POST "https://zamplandoc-scrape.grandzam1.deno.net/scrape" \
+  -H "Content-Type: application/json" \
+  -H "x-scrape-secret: YOUR_SECRET" \
+  -d "{\"url\":\"https://example.com\"}"
+```
+
+Contracts: `schemas/run.schema.json`, `schemas/page.schema.json`.
+
+### Pages / UI
+
+Shell and PWA patterns follow [portal-mobile-kit](https://github.com/grandzam1/portal-mobile-kit). Scrapes live under `docs/scrapes/`.
+
+## Lab / legacy (local Node CLI)
+
+YAML jobs under `src/` + `jobs/` scrape via Composio into local `output/`. They do **not** publish to Pages. Prefer the Deno path for product work.
 
 ```bash
 npm install
 cp .env.example .env
-```
-
-Set at least `COMPOSIO_API_KEY` and `COMPOSIO_USER_ID`.
-
-```bash
 npm run scrape -- --job jobs/example-generic.yaml
 ```
-
-## Deno runner (no local Node)
-
-Deploy `deno-scrape/main.ts` to Deno Deploy. Env vars:
-
-- `FIRECRAWL_API_KEY`
-- `GROQ_API_KEY` (without it the run is **degraded** and the page is marked raw)
-- `GROQ_CHUNK_CHARS` optional (default `5500`); large pages are split under Groq’s free-tier TPM cap
-- `GROQ_TPM_BUDGET` optional (default `6500`); throttle between Groq chunks
-- `COMPOSIO_API_KEY` + `COMPOSIO_USER_ID` (Airtable `runs` log via Composio)
-- `COMPOSIO_AIRTABLE_ACCOUNT_ID` (connected Airtable account)
-- `AIRTABLE_BASE_ID` optional if a base named `scrape-kit` already exists
-- `GITHUB_TOKEN` with `contents:write` on this repo
-- `GITHUB_REPO=grandzam1/scrape-kit`
-- `SCRAPE_SECRET`
-
-Connect **Airtable** in [Composio](https://app.composio.dev). Create one empty base named **scrape-kit** in Airtable (the API cannot create the first workspace/base). The runner then creates a `runs` table and upserts one record per scrape. After each job it stores Firecrawl remaining/plan credits and Composio 30-day tool-call usage on that row.
-
-```bash
-curl -X POST "https://<your-app>.<org>.deno.net/scrape" \
-  -H "Content-Type: application/json" \
-  -H "x-scrape-secret: YOUR_SECRET" \
-  -d "{\"url\":\"https://example.com\",\"slug\":\"example\"}"
-```
-
-That commit triggers Pages.
-
-## GitHub Pages
-
-Site: https://grandzam1.github.io/scrape-kit/
-
-Paste a URL on the home page. The browser opens a websocket to the Deno runner (`/ws`), shows each step, then links the live Pages URL.
-
-Shell, tokens, and PWA come from [portal-mobile-kit](https://github.com/grandzam1/portal-mobile-kit):
-
-- `docs/assets/portal-shell.css` — safe areas, tab clearance, focused header
-- `docs/config/theme.json` — color / type tokens
-- `docs/manifest.webmanifest` + `docs/icons/` — installable PWA
-- Home uses the **tab** shell; scrape articles use the **focused** shell (back + centered title, no tab bar)
-
-New files under `docs/scrapes/` render as articles.
-
-## Modes
 
 | Mode | Path | Groq |
 |------|------|------|

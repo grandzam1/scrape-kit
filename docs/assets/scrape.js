@@ -140,7 +140,10 @@ function finishOk(msg) {
       const bits = [];
       if (msg.layoutSource === "raw") bits.push("Groq did not layout this page (raw Firecrawl).");
       if (msg.groqError) bits.push(msg.groqError);
-      if (msg.sheetOk === "false" || msg.sheetError) bits.push("Runs log write failed.");
+      if (
+        msg.airtableOk === "false" || msg.airtableError ||
+        msg.sheetOk === "false" || msg.sheetError
+      ) bits.push("Runs log write failed.");
       warn.textContent = bits.join(" ") || "This scrape finished as degraded.";
     }
   }

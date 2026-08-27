@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grandzam1.github.io/scrape-kit/schemas/run.schema.json",
+  "title": "scrape-kit run log",
+  "type": "object",
+  "required": ["run_id", "status", "source_url", "slug"],
+  "additionalProperties": false,
+  "properties": {
+    "run_id": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string" },
+    "finished_at": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "ok", "degraded", "failed"]
+    },
+    "source_url": { "type": "string", "minLength": 1 },
+    "fragment": { "type": "string" },
+    "slug": { "type": "string", "minLength": 1 },
+    "page_url": { "type": "string" },
+    "layout_source": {
+      "type": "string",
+      "enum": ["", "groq", "raw", "unchanged"]
+    },
+    "groq_ok": { "type": "string" },
+    "groq_error": { "type": "string" },
+    "firecrawl_ok": { "type": "string" },
+    "firecrawl_error": { "type": "string" },
+    "github_ok": { "type": "string" },
+    "github_error": { "type": "string" },
+    "skipped_unchanged": { "type": "string" },
+    "airtable_ok": { "type": "string" },
+    "airtable_error": { "type": "string" },
+    "firecrawl_credits_used": { "type": "string" },
+    "firecrawl_credits_remaining": { "type": "string" },
+    "firecrawl_plan_credits": { "type": "string" },
+    "composio_tool_calls_30d": { "type": "string" },
+    "composio_calls_this_run": { "type": "string" },
+    "composio_rate_remaining": { "type": "string" },
+    "credits_error": { "type": "string" },
+    "duration_ms": { "type": "string" },
+    "actor": { "type": "string", "enum": ["", "ws", "post"] }
+  }
+}

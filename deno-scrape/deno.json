@@ -1,9 +1,11 @@
 {
   "deploy": {
-    "project": "zamplandoc-scrape",
+    "org": "grandzam1",
+    "app": "zamplandoc-scrape",
     "entrypoint": "main.ts"
   },
   "tasks": {
     "start": "deno run --allow-net --allow-env main.ts"
   }
 }
+

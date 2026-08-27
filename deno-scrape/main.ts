@@ -838,8 +838,8 @@ const RUN_HEADERS = [
   "github_ok",
   "github_error",
   "skipped_unchanged",
-  "sheet_ok",
-  "sheet_error",
+  "airtable_ok",
+  "airtable_error",
   "firecrawl_credits_used",
   "firecrawl_credits_remaining",
   "firecrawl_plan_credits",
@@ -868,7 +868,10 @@ async function composioExecute(slug: string, args: Record<string, unknown>) {
   if (!apiKey || !userId) {
     throw new Error("Missing COMPOSIO_API_KEY or COMPOSIO_USER_ID");
   }
-  const account = Deno.env.get("COMPOSIO_AIRTABLE_ACCOUNT_ID") ?? "ca_xzi4VNLxHNMu";
+  const account = Deno.env.get("COMPOSIO_AIRTABLE_ACCOUNT_ID");
+  if (!account) {
+    throw new Error("Missing COMPOSIO_AIRTABLE_ACCOUNT_ID");
+  }
   const res = await fetch(
     `https://backend.composio.dev/api/v3.1/tools/execute/${encodeURIComponent(slug)}`,
     {
@@ -1107,12 +1110,12 @@ async function upsertRun(run: RunLog): Promise<string | null> {
 async function writeRun(run: RunLog) {
   const err = await upsertRun(run);
   if (err) {
-    run.sheet_ok = "false";
-    run.sheet_error = err.slice(0, 500);
+    run.airtable_ok = "false";
+    run.airtable_error = err.slice(0, 500);
     return err;
   }
-  run.sheet_ok = "true";
-  run.sheet_error = "";
+  run.airtable_ok = "true";
+  run.airtable_error = "";
   return null;
 }
 
@@ -1155,8 +1158,8 @@ async function runScrape(
     pageUrl,
     runId: run.run_id,
     status: run.status,
-    sheetOk: run.sheet_ok,
-    sheetError: run.sheet_error,
+    airtableOk: run.airtable_ok,
+    airtableError: run.airtable_error,
   });
 
   const finish = async (status: string, extra: Record<string, unknown> = {}) => {
@@ -1174,8 +1177,8 @@ async function runScrape(
       status,
       layoutSource: run.layout_source,
       groqError: run.groq_error,
-      sheetOk: run.sheet_ok,
-      sheetError: run.sheet_error || sheetStartErr || sheetErr || "",
+      airtableOk: run.airtable_ok,
+      airtableError: run.airtable_error || sheetStartErr || sheetErr || "",
       firecrawlCreditsUsed: run.firecrawl_credits_used,
       firecrawlCreditsRemaining: run.firecrawl_credits_remaining,
       firecrawlPlanCredits: run.firecrawl_plan_credits,
@@ -1241,7 +1244,7 @@ async function runScrape(
     let pagesOk = true;
     if (waitPages) pagesOk = await waitForLivePage(pageUrl);
 
-    const degraded = run.groq_ok !== "true" || run.sheet_ok !== "true" || !pagesOk;
+    const degraded = run.groq_ok !== "true" || run.airtable_ok !== "true" || !pagesOk;
     return await finish(degraded ? "degraded" : "ok", { skipped: false });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

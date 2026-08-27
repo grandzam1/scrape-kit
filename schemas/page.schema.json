@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grandzam1.github.io/scrape-kit/schemas/page.schema.json",
+  "title": "scrape-kit published page front matter",
+  "type": "object",
+  "required": ["title", "source", "layout", "contentHash", "layoutSource"],
+  "additionalProperties": true,
+  "properties": {
+    "title": { "type": "string", "minLength": 1 },
+    "source": { "type": "string", "minLength": 1 },
+    "scrapedAt": { "type": "string" },
+    "layout": { "type": "string", "const": "scrape" },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "pageType": {
+      "type": "string",
+      "enum": ["article", "guide", "product", "changelog", "thread", "docs", "other"]
+    },
+    "layoutSource": {
+      "type": "string",
+      "enum": ["groq", "raw"]
+    },
+    "runId": { "type": "string" },
+    "groqError": { "type": "string" }
+  }
+}
