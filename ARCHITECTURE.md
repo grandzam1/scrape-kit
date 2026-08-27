@@ -36,5 +36,5 @@
 ## Next phases
 
 1. ~~Lock product path + contracts~~ (this doc).
-2. Split `deno-scrape/main.ts` into modules (`firecrawl`, `groq`, `github`, `airtable`, `http`).
+2. ~~Split `deno-scrape/main.ts` into modules (`util`, `markdown`, `firecrawl`, `groq`, `github`, `airtable`, `http`, `run`)~~.
 3. Async runs: accept → `run_id` → background layout/publish (fixes long-page TPM vs Deploy timeout).
