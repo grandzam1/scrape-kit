@@ -31,10 +31,24 @@
 
 - Unifying Node CLI and Deno into one binary.
 - Replacing git-backed Pages publish (acceptable until scrape volume grows).
-- Async job queue (next reliability phase after contracts).
+
+## Async runs (Phase 3)
+
+New Deno Deploy does **not** support `Kv.enqueue` / `listenQueue` (see Deploy migration guide). Async is implemented as:
+
+1. Assign `runId`, write snapshot (KV if provisioned, else memory).
+2. Respond `202` immediately:
+   - Prefer `EdgeRuntime.waitUntil` when present (`mode: waitUntil`).
+   - Else **NDJSON progress stream** (`mode: stream`) — response body bytes keep the isolate alive for the job.
+3. Clients poll `GET /runs/:runId` and/or read the NDJSON stream until `status` is `ok` | `degraded` | `failed`.
+
+Sync escape hatch: `{ "async": false }`.
+
+WebSocket `/ws` stays connection-bound and streaming (UI path).
 
 ## Next phases
 
 1. ~~Lock product path + contracts~~ (this doc).
-2. ~~Split `deno-scrape/main.ts` into modules (`util`, `markdown`, `firecrawl`, `groq`, `github`, `airtable`, `http`, `run`)~~.
-3. Async runs: accept → `run_id` → background layout/publish (fixes long-page TPM vs Deploy timeout).
+2. ~~Split `deno-scrape/main.ts` into modules~~.
+3. ~~Async runs (`GET /runs/:id` + 202 stream / waitUntil)~~.
+4. Optional: provision Deploy KV database for durable cross-isolate run snapshots; Pages UI poll fallback if WS drops.

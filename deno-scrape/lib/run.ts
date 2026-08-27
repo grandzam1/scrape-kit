@@ -3,29 +3,58 @@ import {
   resetComposioCallCount,
   snapshotVendorCredits,
   writeRun,
+  type RunLog,
 } from "./airtable.ts";
 import { scrapeFirecrawl } from "./firecrawl.ts";
 import { githubGetFile, githubPutFile } from "./github.ts";
 import { layoutWithGroq } from "./groq.ts";
 import { PAGES_BASE, waitForLivePage } from "./http.ts";
 import { buildMarkdown, parseFrontHash } from "./markdown.ts";
+import { saveRunSnapshotSafe, type ScrapeJob } from "./store.ts";
 import { sha256Hex, slugFromUrl } from "./util.ts";
 
 export type Progress = (step: string, extra?: Record<string, unknown>) => void;
 
-export async function runScrape(
-  sourceUrl: string,
-  slugInput: string | undefined,
-  waitFor: number,
-  onlyMainContent: boolean,
-  progress: Progress,
-  waitPages = false,
-) {
-  const slug = String(slugInput ?? slugFromUrl(sourceUrl)).replace(/[^a-zA-Z0-9_-]/g, "-");
-  const filePath = `docs/scrapes/${slug}/page.md`;
+function snapshotFromRun(run: RunLog, extra: Record<string, unknown> = {}) {
+  return {
+    runId: run.run_id,
+    status: run.status,
+    sourceUrl: run.source_url,
+    slug: run.slug,
+    pageUrl: run.page_url,
+    layoutSource: run.layout_source,
+    groqOk: run.groq_ok,
+    groqError: run.groq_error,
+    firecrawlOk: run.firecrawl_ok,
+    firecrawlError: run.firecrawl_error,
+    githubOk: run.github_ok,
+    githubError: run.github_error,
+    airtableOk: run.airtable_ok,
+    airtableError: run.airtable_error,
+    skippedUnchanged: run.skipped_unchanged,
+    durationMs: run.duration_ms,
+    actor: run.actor,
+    ...extra,
+  };
+}
+
+/** Create runId + KV/memory snapshot for async accept. Does not start work. */
+export async function prepareScrapeJob(opts: {
+  sourceUrl: string;
+  slugInput?: string;
+  waitFor?: number;
+  onlyMainContent?: boolean;
+}): Promise<{
+  runId: string;
+  slug: string;
+  pageUrl: string;
+  sourceUrl: string;
+  status: string;
+  job: ScrapeJob;
+}> {
+  const sourceUrl = opts.sourceUrl;
+  const slug = String(opts.slugInput ?? slugFromUrl(sourceUrl)).replace(/[^a-zA-Z0-9_-]/g, "-");
   const pageUrl = `${PAGES_BASE}/scrapes/${slug}/page.html`;
-  const started = Date.now();
-  resetComposioCallCount();
   let fragment = "";
   try {
     fragment = new URL(sourceUrl).hash.replace(/^#/, "");
@@ -41,10 +70,62 @@ export async function runScrape(
   run.fragment = fragment;
   run.slug = slug;
   run.page_url = pageUrl;
+  run.actor = "post";
+  run.groq_ok = "pending";
+
+  await saveRunSnapshotSafe(run.run_id, snapshotFromRun(run, { step: "queued" }));
+
+  return {
+    runId: run.run_id,
+    slug,
+    pageUrl,
+    sourceUrl,
+    status: "queued",
+    job: {
+      kind: "scrape",
+      runId: run.run_id,
+      sourceUrl,
+      slug,
+      waitFor: Number(opts.waitFor ?? 3000),
+      onlyMainContent: opts.onlyMainContent !== false,
+    },
+  };
+}
+
+export async function runScrape(
+  sourceUrl: string,
+  slugInput: string | undefined,
+  waitFor: number,
+  onlyMainContent: boolean,
+  progress: Progress,
+  waitPages = false,
+  existingRunId?: string,
+) {
+  const slug = String(slugInput ?? slugFromUrl(sourceUrl)).replace(/[^a-zA-Z0-9_-]/g, "-");
+  const filePath = `docs/scrapes/${slug}/page.md`;
+  const pageUrl = `${PAGES_BASE}/scrapes/${slug}/page.html`;
+  const started = Date.now();
+  resetComposioCallCount();
+  let fragment = "";
+  try {
+    fragment = new URL(sourceUrl).hash.replace(/^#/, "");
+  } catch {
+    fragment = "";
+  }
+
+  const run = emptyRun();
+  run.run_id = existingRunId || crypto.randomUUID();
+  run.started_at = new Date().toISOString();
+  run.status = "queued";
+  run.source_url = sourceUrl;
+  run.fragment = fragment;
+  run.slug = slug;
+  run.page_url = pageUrl;
   run.actor = waitPages ? "ws" : "post";
   run.groq_ok = "pending";
 
   const sheetStartErr = await writeRun(run);
+  await saveRunSnapshotSafe(run.run_id, snapshotFromRun(run));
   progress("queued", {
     slug,
     pageUrl,
@@ -79,12 +160,18 @@ export async function runScrape(
       composioRateRemaining: run.composio_rate_remaining,
       ...extra,
     };
+    await saveRunSnapshotSafe(run.run_id, { ...snapshotFromRun(run), ...payload });
     progress("done", payload);
     return payload;
   };
 
+  const bump = async (step: string, extra: Record<string, unknown> = {}) => {
+    await saveRunSnapshotSafe(run.run_id, snapshotFromRun(run, { step, ...extra }));
+    progress(step, extra);
+  };
+
   try {
-    progress("scrape");
+    await bump("scrape");
     const scraped = await scrapeFirecrawl(sourceUrl, waitFor, onlyMainContent);
     run.firecrawl_ok = "true";
     if (scraped.creditsUsed) run.firecrawl_credits_used = scraped.creditsUsed;
@@ -100,10 +187,10 @@ export async function runScrape(
       run.layout_source = "unchanged";
       run.groq_ok = "skipped";
       run.groq_error = "Same Firecrawl body as last publish; Groq was not called";
-      progress("layout", { skipped: true, reason: "unchanged" });
-      progress("write", { skipped: true });
-      progress("commit", { skipped: true });
-      progress("pages", { pageUrl });
+      await bump("layout", { skipped: true, reason: "unchanged" });
+      await bump("write", { skipped: true });
+      await bump("commit", { skipped: true });
+      await bump("pages", { pageUrl });
       if (waitPages) await waitForLivePage(pageUrl);
       return await finish("ok", { skipped: true });
     }
@@ -112,13 +199,13 @@ export async function runScrape(
       run.skipped_unchanged = "false";
     }
 
-    progress("layout");
+    await bump("layout");
     const laid = await layoutWithGroq(scraped.markdown, scraped.title, fragment || null);
     run.layout_source = laid.layoutSource;
     run.groq_ok = laid.layoutSource === "groq" ? "true" : "false";
     run.groq_error = ("groqError" in laid && laid.groqError) ? laid.groqError : "";
 
-    progress("write");
+    await bump("write");
     const extra: Record<string, string> = {
       contentHash,
       pageType: laid.pageType,
@@ -128,11 +215,11 @@ export async function runScrape(
     if (run.groq_error) extra.groqError = run.groq_error;
     const markdown = buildMarkdown(sourceUrl, laid.title, laid.body, extra);
 
-    progress("commit");
+    await bump("commit");
     await githubPutFile(filePath, markdown, `scrape: update ${slug}`);
     run.github_ok = "true";
 
-    progress("pages", { pageUrl });
+    await bump("pages", { pageUrl });
     let pagesOk = true;
     if (waitPages) pagesOk = await waitForLivePage(pageUrl);
 
@@ -152,6 +239,34 @@ export async function runScrape(
     run.duration_ms = String(Date.now() - started);
     await snapshotVendorCredits(run);
     await writeRun(run);
+    await saveRunSnapshotSafe(run.run_id, snapshotFromRun(run, { error: message }));
     throw err;
   }
+}
+
+export async function runQueuedScrapeJob(job: ScrapeJob, progress: Progress = () => {}) {
+  return await runScrape(
+    job.sourceUrl,
+    job.slug,
+    job.waitFor,
+    job.onlyMainContent,
+    progress,
+    false,
+    job.runId,
+  );
+}
+
+/** Prefer EdgeRuntime.waitUntil when present (Supabase-style). */
+export function hasWaitUntil(): boolean {
+  const g = globalThis as Record<string, unknown>;
+  const er = g.EdgeRuntime as { waitUntil?: (p: Promise<unknown>) => void } | undefined;
+  return Boolean(er && typeof er.waitUntil === "function");
+}
+
+export function tryWaitUntil(promise: Promise<unknown>): boolean {
+  if (!hasWaitUntil()) return false;
+  const g = globalThis as Record<string, unknown>;
+  const er = g.EdgeRuntime as { waitUntil: (p: Promise<unknown>) => void };
+  er.waitUntil(promise);
+  return true;
 }

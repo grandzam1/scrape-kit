@@ -1,4 +1,5 @@
 import { firecrawlCreditUsage } from "./firecrawl.ts";
+import { loadAirtableRecordId, saveAirtableRecordId } from "./store.ts";
 
 export const RUN_HEADERS = [
   "run_id",
@@ -229,10 +230,26 @@ export async function ensureRunsTable() {
 
 const airtableRecordIds = new Map<string, string>();
 
+async function rememberAirtableRecordId(runId: string, recordId: string) {
+  airtableRecordIds.set(runId, recordId);
+  await saveAirtableRecordId(runId, recordId);
+}
+
+async function lookupAirtableRecordId(runId: string): Promise<string | undefined> {
+  const cached = airtableRecordIds.get(runId);
+  if (cached) return cached;
+  const fromKv = await loadAirtableRecordId(runId);
+  if (fromKv) {
+    airtableRecordIds.set(runId, fromKv);
+    return fromKv;
+  }
+  return undefined;
+}
+
 export async function upsertRun(run: RunLog): Promise<string | null> {
   try {
     const { baseId, table } = await ensureRunsTable();
-    const rec = airtableRecordIds.get(run.run_id);
+    const rec = await lookupAirtableRecordId(run.run_id);
     if (rec) {
       await composioExecute("AIRTABLE_UPDATE_RECORD", {
         baseId,
@@ -250,7 +267,7 @@ export async function upsertRun(run: RunLog): Promise<string | null> {
     });
     const id = extractRecordId(created);
     if (!id) throw new Error("Airtable create returned no record id");
-    airtableRecordIds.set(run.run_id, id);
+    await rememberAirtableRecordId(run.run_id, id);
     return null;
   } catch (err) {
     return err instanceof Error ? err.message : String(err);

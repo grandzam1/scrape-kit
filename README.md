@@ -40,10 +40,19 @@ Optional:
 Create one empty Airtable base named **scrape-kit** (API cannot create the first workspace/base). The runner creates/patches the `runs` table.
 
 ```bash
-curl -X POST "https://zamplandoc-scrape.grandzam1.deno.net/scrape" \
+# Async (default) — HTTP 202 + NDJSON progress (or waitUntil + poll GET /runs/:id)
+curl -N -X POST "https://zamplandoc-scrape.grandzam1.deno.net/scrape" \
   -H "Content-Type: application/json" \
   -H "x-scrape-secret: YOUR_SECRET" \
   -d "{\"url\":\"https://example.com\"}"
+
+curl "https://zamplandoc-scrape.grandzam1.deno.net/runs/RUN_ID"
+
+# Sync (single JSON when finished) — for short scripts / debugging
+curl -X POST "https://zamplandoc-scrape.grandzam1.deno.net/scrape" \
+  -H "Content-Type: application/json" \
+  -H "x-scrape-secret: YOUR_SECRET" \
+  -d "{\"url\":\"https://example.com\",\"async\":false}"
 ```
 
 Contracts: `schemas/run.schema.json`, `schemas/page.schema.json`.
